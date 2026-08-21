@@ -181,7 +181,7 @@ UI.updateTags = function () {
 
 /* --- 1. location --------------------------------------------------------- */
 function panelLocation() {
-  return panel('location', 'Location & site', true, function (b) {
+  return panel('location', 'Location & site', false, function (b) {
     var items = CITIES.map(function (c) { return { value: c.name, label: c.name }; });
     items.unshift({ value: '__custom', label: 'Custom coordinates…' });
     b.appendChild(row('City', ctlSelect(items,
@@ -233,7 +233,7 @@ function panelLocation() {
 
 /* --- 2. date & time ------------------------------------------------------ */
 function panelTime() {
-  return panel('time', 'Date & time', true, function (b) {
+  return panel('time', 'Date & time', false, function (b) {
     b.appendChild(el('div', { class: 'grid3' }, [
       field('Day', ctlNumber(
         function () { return App.model.when.day; },
@@ -391,7 +391,7 @@ function panelClimate() {
 
 /* --- 5. room & materials ------------------------------------------------- */
 function panelRoom() {
-  return panel('room', 'Room & materials', true, function (b) {
+  return panel('room', 'Room & materials', false, function (b) {
     b.appendChild(subhead('Internal dimensions (m)'));
     b.appendChild(el('div', { class: 'grid3' }, [
       field('Length X', ctlNumber(
@@ -456,7 +456,7 @@ var SIDE_LABELS = { N: 'North', E: 'East', S: 'South', W: 'West', roof: 'Roof' }
 var SIDE_COLORS = { N: '#5b8def', E: '#f2a33c', S: '#e05252', W: '#8a5cd6', roof: '#3fae8e' };
 
 function panelOpenings() {
-  return panel('openings', 'Openings', true, function (b) {
+  return panel('openings', 'Openings', false, function (b) {
     b.appendChild(el('div', { class: 'btn-row' }, [
       el('button', { class: 'btn sm', text: '+ Window', onclick: function () { App.addAperture('window'); } }),
       el('button', { class: 'btn sm', text: '+ Skylight', onclick: function () { App.addAperture('skylight'); } }),
@@ -682,7 +682,7 @@ function renderShading(host) {
 
 /* --- 8. analysis --------------------------------------------------------- */
 function panelAnalysis() {
-  return panel('analysis', 'Analysis', true, function (b) {
+  return panel('analysis', 'Analysis', false, function (b) {
     b.appendChild(row('Engine', ctlSeg([
       { value: 'raytrace', label: 'Raytraced', title: 'Daylight coefficients — sees shading, reveals and interreflection' },
       { value: 'splitflux', label: 'Split-flux', title: 'BRE hand method — instant, but blind to shading geometry' }
@@ -856,7 +856,7 @@ var STYLES = [
 ];
 
 function panelDisplay() {
-  return panel('display', 'Display', true, function (b) {
+  return panel('display', 'Display', false, function (b) {
     b.appendChild(row('Appearance', ctlSeg([
       { value: 'light', label: 'Studio', title: 'Studio Light — neutral, projector-friendly' },
       { value: 'dark', label: 'Dark Lab', title: 'Dark Lab — high contrast for false colour' },

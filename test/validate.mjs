@@ -39,6 +39,12 @@ await page.waitForFunction(() => window.App && App.result && App.field, null, { 
 const idle = () => page.evaluate(() => App.whenIdle());
 await idle();
 ok('app boots and produces a first result', true);
+const rail = await page.evaluate(() => ({
+  total: document.querySelectorAll('.panel').length,
+  open: [...document.querySelectorAll('.panel')].filter((d) => d.open).map((d) => d.id)
+}));
+ok('the toolbar starts fully collapsed', rail.open.length === 0 && rail.total === 12,
+  `${rail.total} panels, ${rail.open.length} open`);
 ok('engine mode', true, await page.evaluate(() => App.engine.mode));
 
 /* ---------------- physics ---------------- */
