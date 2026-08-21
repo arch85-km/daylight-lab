@@ -8,7 +8,7 @@
   --font-num: "SF Mono", "JetBrains Mono", "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
 
   --rail-w: 336px;
-  --top-h: 52px;
+  --top-h: 58px;
   --bot-h: 30px;
   --r: 7px;
   --r-sm: 5px;
@@ -187,7 +187,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   z-index: 30;
   min-width: 0;
 }
-.brand { display: flex; align-items: center; gap: 9px; padding-right: 10px; flex: none; }
+.brand { display: flex; align-items: center; gap: 11px; padding-right: 14px; flex: none; }
 .brand-mark {
   width: 26px; height: 26px; border-radius: 6px; flex: none;
   background: linear-gradient(150deg, var(--sun) 0%, var(--accent) 100%);
@@ -195,9 +195,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   box-shadow: var(--shadow-sm);
 }
 .brand-mark svg { width: 16px; height: 16px; display: block; }
-.brand-txt { line-height: 1.05; }
-.brand-txt b { font-size: 13.5px; font-weight: 650; letter-spacing: -.01em; display: block; }
-.brand-txt span { font-size: 10px; color: var(--ink-3); letter-spacing: .06em; text-transform: uppercase; }
+.brand-txt { line-height: 1.3; padding: 1px 0; }
+.brand-txt b { font-size: 14px; font-weight: 650; letter-spacing: 0; display: block; margin-bottom: 2px; }
+.brand-txt span { display: block; font-size: 9.5px; line-height: 1.1; color: var(--ink-3);
+  letter-spacing: .1em; text-transform: uppercase; }
 
 .topbar-sep { width: 1px; align-self: stretch; margin: 10px 2px; background: var(--line); flex: none; }
 .topbar-spacer { flex: 1 1 auto; min-width: 0; }
@@ -321,6 +322,21 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 /* ---------- stage ------------------------------------------------------ */
 #stage { grid-area: stage; position: relative; overflow: hidden; background: var(--bg); }
 #view { position: absolute; inset: 0; display: block; touch-action: none; }
+#view.over-aperture { cursor: move; }
+#view.dragging { cursor: grabbing; }
+
+/* readout that follows the pointer while an opening is being dragged */
+#dragchip {
+  position: absolute; z-index: 65; display: none; pointer-events: none;
+  transform: translate(14px, -50%);
+  padding: 4px 9px; border-radius: var(--r-sm);
+  background: var(--accent); color: var(--accent-ink);
+  font-family: var(--font-num); font-size: 11px; font-weight: 600;
+  white-space: nowrap; box-shadow: var(--shadow);
+}
+#dragchip.on { display: block; }
+#dragchip b { font-weight: 700; }
+#dragchip i { opacity: .7; font-style: normal; }
 #view-b { display: none; }
 #stage.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); }
 #stage.compare #view, #stage.compare #view-b { position: relative; inset: auto; width: 100%; height: 100%; display: block; }

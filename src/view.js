@@ -10,6 +10,10 @@
 /* --- camera control ------------------------------------------------------ */
 function OrbitCtl(camera, dom, onChange) {
   this.cam = camera; this.dom = dom; this.onChange = onChange;
+  // `claim` may consume a press before it becomes a camera gesture (used by
+  // aperture dragging); `suspend` stops an in-flight gesture, for the touch
+  // press-and-hold that promotes an orbit into a drag.
+  this.claim = null; this.suspend = false;
   this.target = new THREE.Vector3(0, 1.2, 0);
   this.dist = 18; this.theta = -0.6; this.phi = 1.05;
   this.minPhi = 0.02; this.maxPhi = Math.PI - 0.02;
@@ -23,6 +27,8 @@ OrbitCtl.prototype._bind = function () {
 
   var down = function (e) {
     if (!s.enabled) return;
+    s.suspend = false;
+    if (!Object.keys(touches).length && s.claim && s.claim(e)) return;
     dom.setPointerCapture && dom.setPointerCapture(e.pointerId);
     touches[e.pointerId] = { x: e.clientX, y: e.clientY };
     var n = Object.keys(touches).length;
@@ -37,7 +43,7 @@ OrbitCtl.prototype._bind = function () {
     e.preventDefault();
   };
   var move = function (e) {
-    if (!s.enabled || !(e.pointerId in touches)) return;
+    if (!s.enabled || s.suspend || !(e.pointerId in touches)) return;
     touches[e.pointerId] = { x: e.clientX, y: e.clientY };
     var keys = Object.keys(touches);
     if (keys.length === 2) {
@@ -55,6 +61,7 @@ OrbitCtl.prototype._bind = function () {
     s.apply(); e.preventDefault();
   };
   var up = function (e) {
+    s.suspend = false;
     delete touches[e.pointerId];
     if (Object.keys(touches).length < 2) { lastPinch = 0; lastMid = null; }
     if (!Object.keys(touches).length) drag = null;
@@ -120,6 +127,7 @@ function View(canvas) {
   this.gRays = new THREE.Group(); this.root.add(this.gRays);
   this.gDims = new THREE.Group(); this.root.add(this.gDims);
   this.gGround = new THREE.Group(); this.root.add(this.gGround);
+  this.gPick = new THREE.Group(); this.root.add(this.gPick);
 
   this.sunLight = new THREE.DirectionalLight(0xffffff, 2.1);
   this.sunLight.castShadow = true;
@@ -654,6 +662,67 @@ View.prototype.project = function (x, y, z, out) {
   out.z = v.z;
   out.visible = v.z > -1 && v.z < 1 && out.x > -60 && out.y > -20 && out.x < w + 60 && out.y < h + 20;
   return out;
+};
+
+/* --- picking --------------------------------------------------------------
+   Openings are picked by raycasting the SOLID geometry, then asking the model
+   which opening (if any) owns the point that was struck. That way the glass,
+   the frame, the reveal and a door leaf all select the same thing, and no
+   material ids have to be duplicated per aperture.                          */
+
+/** A raycaster set from the pointer through whichever camera is active. */
+View.prototype.pointerRay = function (clientX, clientY) {
+  var r = this.canvas.getBoundingClientRect();
+  var nd = this._ndc || (this._ndc = new THREE.Vector2());
+  nd.x = ((clientX - r.left) / r.width) * 2 - 1;
+  nd.y = -((clientY - r.top) / r.height) * 2 + 1;
+  var rc = this._rc || (this._rc = new THREE.Raycaster());
+  rc.setFromCamera(nd, this.active);
+  return rc;
+};
+
+/**
+ * The opening under the pointer, with the ray that found it.
+ * @returns {object|null} {aperture, point, ray, distance}
+ */
+View.prototype.pickAperture = function (model, clientX, clientY) {
+  var rc = this.pointerRay(clientX, clientY);
+  // solids and glazing only — never the analysis mesh, dimensions or sun path
+  var hits = rc.intersectObjects([this.gModel, this.gRoof, this.gGlass], true);
+  for (var i = 0; i < hits.length; i++) {
+    var h = hits[i];
+    if (h.object.type === 'LineSegments' || h.object.type === 'Line') continue;
+    var p = [h.point.x, h.point.y, h.point.z];
+    var ap = apertureAtPoint(model, p, 0.025);
+    if (ap) return { aperture: ap, point: p, ray: rc, distance: h.distance };
+    return null;                       // the nearest solid is plain wall
+  }
+  return null;
+};
+
+/** Outline an opening on both faces of its slab. Pass null to clear. */
+View.prototype.highlightAperture = function (model, ap, active) {
+  disposeGroup(this.gPick);
+  if (!ap) { this.dirty = true; return; }
+  var F = frameFor(ap.side, model.room), r = apertureRect(ap, model.room);
+  var pts = [];
+  [0, F.t].forEach(function (d) {
+    var c = [fpt(F, r[0], r[2], d), fpt(F, r[1], r[2], d),
+             fpt(F, r[1], r[3], d), fpt(F, r[0], r[3], d)];
+    for (var i = 0; i < 4; i++) {
+      var a = c[i], b = c[(i + 1) % 4];
+      pts.push(a[0], a[1], a[2], b[0], b[1], b[2]);
+    }
+  });
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(pts), 3));
+  var line = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+    color: new THREE.Color(cssVar('--accent')),
+    transparent: true, opacity: active ? 1 : 0.75, depthTest: false
+  }));
+  line.renderOrder = 9;
+  this.gPick.add(line);
+  this.dirty = true;
 };
 
 View.prototype.render = function () {

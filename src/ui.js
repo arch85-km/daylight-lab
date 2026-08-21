@@ -468,6 +468,7 @@ function panelOpenings() {
     reg(function () { renderApertureList(list); });
 
     b.appendChild(hint('Click a row to select it — the selected opening is the one the Shading panel and the aperture dimensions refer to.'));
+    b.appendChild(hint('Or just drag the opening in the viewport: windows and doors slide along their wall and up or down, skylights slide across the roof. Positions snap to 0.05 m — hold Alt for free placement, and Ctrl+Z to undo.'));
   });
 }
 
@@ -1242,6 +1243,7 @@ var INFO = {
       '<li><b>Calculate</b> re-bakes the grid. It re-runs on its own whenever the geometry changes.</li>' +
       '<li>Drag in the viewport to orbit, right-drag or shift-drag to pan, scroll to zoom. One finger orbits and two fingers ' +
       'pan and zoom on a touchscreen.</li>' +
+      '<li><b>Drag any window, skylight or door</b> in the viewport to move it. Hold Shift or use the right button to orbit from on top of one, and Ctrl+Z undoes a move.</li>' +
       '<li>Click any <b>dimension label</b> to type a new value. The model rebuilds immediately.</li>' +
       '<li>The two sliders at the bottom scrub time of day and day of year.</li></ul>' +
       '<h3>Suggested sequence for a class</h3><ol>' +

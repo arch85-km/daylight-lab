@@ -165,6 +165,63 @@ function apertureRect(ap, R) {
   return [ap.offset - ap.w / 2, ap.offset + ap.w / 2, ap.sill, ap.sill + ap.h];
 }
 
+/** World point -> that face's local (u, v, depth-along-N). */
+function toLocal(F, p) {
+  var dx = p[0] - F.o[0], dy = p[1] - F.o[1], dz = p[2] - F.o[2];
+  return {
+    u: dx * F.U[0] + dy * F.U[1] + dz * F.U[2],
+    v: dx * F.V[0] + dy * F.V[1] + dz * F.V[2],
+    d: dx * F.N[0] + dy * F.N[1] + dz * F.N[2]
+  };
+}
+
+/**
+ * Which opening, if any, a world point lies on — glass, frame, reveal or door
+ * leaf alike. Used to pick an opening under the pointer.
+ *
+ * @param {number[]} p    world point
+ * @param {number}   tol  slack in metres (default 20 mm)
+ * @returns {object|null} the aperture, or null for blank wall / roof / floor
+ */
+function apertureAtPoint(model, p, tol) {
+  tol = tol == null ? 0.02 : tol;
+  var aps = model.apertures || [], best = null, bestD = Infinity;
+  for (var i = 0; i < aps.length; i++) {
+    var ap = aps[i];
+    if (ap.enabled === false) continue;
+    var F = frameFor(ap.side, model.room);
+    var L = toLocal(F, p);
+    if (L.d < -tol || L.d > F.t + tol) continue;
+    var r = apertureRect(ap, model.room);
+    if (L.u < r[0] - tol || L.u > r[1] + tol) continue;
+    if (L.v < r[2] - tol || L.v > r[3] + tol) continue;
+    // prefer the opening whose slab the point sits most squarely inside
+    var depth = Math.abs(L.d - F.t / 2);
+    if (depth < bestD) { bestD = depth; best = ap; }
+  }
+  return best;
+}
+
+/**
+ * Clamp an opening's position so it stays wholly inside its wall or roof,
+ * leaving `margin` of solid all round. Mutates and returns the aperture.
+ */
+function clampAperture(ap, R, margin) {
+  var m = margin == null ? 0.05 : margin;
+  var F = frameFor(ap.side, R);
+  var uLo = F.inMin + m + ap.w / 2, uHi = F.inMax - m - ap.w / 2;
+  ap.offset = uHi >= uLo ? clamp(ap.offset, uLo, uHi) : (F.inMin + F.inMax) / 2;
+
+  if (ap.side === 'roof') {
+    var vLo = -R.W / 2 + m + ap.h / 2, vHi = R.W / 2 - m - ap.h / 2;
+    ap.offset2 = vHi >= vLo ? clamp(ap.offset2, vLo, vHi) : 0;
+  } else {
+    var sHi = R.H - m - ap.h;
+    ap.sill = sHi >= 0 ? clamp(ap.sill, 0, sHi) : 0;
+  }
+  return ap;
+}
+
 /**
  * Build one slab (a wall, the roof or the floor) with its openings.
  * `mIn` / `mOut` are the interior- and exterior-facing material ids.

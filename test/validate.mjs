@@ -321,6 +321,153 @@ ok('ADF (BS 8206-2) computed and shown with DF', extras.hasAdf && extras.adf > 0
 ok('UDI interval selector changes the displayed field', Math.abs(extras.after - extras.before) > 1,
   `useful ${extras.before.toFixed(1)}% vs too-high ${extras.after.toFixed(1)}%`);
 
+/* ---------------- dragging an opening ---------------- */
+console.log('\n-- drag to move --');
+
+/** Screen position of an opening's centre, in page coordinates. */
+const screenOf = (side) => page.evaluate((sd) => {
+  const ap = App.model.apertures.find((a) => a.side === sd);
+  if (!ap) return null;
+  const F = frameFor(sd, App.model.room), r = apertureRect(ap, App.model.room);
+  const c = fpt(F, (r[0] + r[1]) / 2, (r[2] + r[3]) / 2, F.t);
+  const pr = App.view.project(c[0], c[1], c[2]);
+  const cr = document.getElementById('view').getBoundingClientRect();
+  return { sx: cr.left + pr.x, sy: cr.top + pr.y, visible: pr.visible };
+}, side);
+
+const aimAt = async (view) => {
+  await page.evaluate((v) => {
+    App.resetModel();
+    App.setViewMode('3d');
+    App.view.setStandardView(v);
+    App.view.frame();
+  }, view);
+  await idle();
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+};
+const dragBy = async (pt, dx, dy, steps = 10, mods = []) => {
+  for (const m of mods) await page.keyboard.down(m);
+  await page.mouse.move(pt.sx, pt.sy);
+  await page.mouse.down();
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(pt.sx + dx * i / steps, pt.sy + dy * i / steps);
+    await page.waitForTimeout(14);
+  }
+  await page.mouse.up();
+  for (const m of mods) await page.keyboard.up(m);
+  await idle();
+};
+const southAp = () => page.evaluate(() => {
+  const a = App.model.apertures.find((x) => x.side === 'S');
+  return { offset: +a.offset.toFixed(3), sill: +a.sill.toFixed(3), w: a.w, h: a.h };
+});
+
+const pick = await page.evaluate(() => {
+  const ap = App.model.apertures.find((a) => a.side === 'S');
+  const F = frameFor('S', App.model.room), r = apertureRect(ap, App.model.room);
+  const on = (u, v, d) => { const p = fpt(F, u, v, d); return apertureAtPoint(App.model, p, 0.025); };
+  const door = App.model.apertures.find((a) => a.kind === 'door');
+  const FD = frameFor(door.side, App.model.room), rd = apertureRect(door, App.model.room);
+  const dp = fpt(FD, (rd[0] + rd[1]) / 2, (rd[2] + rd[3]) / 2, FD.t / 2);
+  return {
+    glass: (on((r[0] + r[1]) / 2, (r[2] + r[3]) / 2, F.t / 2) || {}).id === ap.id,
+    reveal: (on(r[0] + 0.001, (r[2] + r[3]) / 2, F.t / 2) || {}).id === ap.id,
+    door: (apertureAtPoint(App.model, dp, 0.025) || {}).id === door.id,
+    wall: apertureAtPoint(App.model, fpt(F, r[0] - 0.6, 0.3, F.t / 2), 0.025) === null
+  };
+});
+ok('hit test finds the opening from glass, reveal and door leaf',
+  pick.glass && pick.reveal && pick.door, JSON.stringify(pick));
+ok('hit test returns nothing on blank wall', pick.wall);
+
+await aimAt('south');
+const s0 = await southAp();
+const pS = await screenOf('S');
+await dragBy(pS, 60, 0);
+const s1 = await southAp();
+ok('dragging an opening moves it along its wall', s1.offset > s0.offset + 0.2,
+  `offset ${s0.offset} → ${s1.offset} m`);
+ok('a move changes position only, never size', s1.w === s0.w && s1.h === s0.h);
+ok('the move reaches the daylight engine', true,
+  'mean DF now ' + (await page.evaluate(() => App.stats.mean.toFixed(2))) + '%');
+ok('the dragged opening becomes the selected one',
+  await page.evaluate(() => UI.selectedAperture === App.model.apertures.find((a) => a.side === 'S').id));
+
+await page.keyboard.press('Control+z');
+await idle();
+ok('Ctrl+Z restores the position exactly', (await southAp()).offset === s0.offset,
+  'back to ' + (await southAp()).offset + ' m');
+
+await aimAt('south');
+const pV = await screenOf('S');
+await dragBy(pV, 0, -60, 8);
+const sv = await southAp();
+ok('dragging vertically changes the sill', sv.sill > s0.sill + 0.2 && sv.offset === s0.offset,
+  `sill ${s0.sill} → ${sv.sill} m`);
+
+await aimAt('south');
+const pC = await screenOf('S');
+await dragBy(pC, 700, 0, 20);
+const sc = await southAp();
+const limit = await page.evaluate(() => {
+  const a = App.model.apertures.find((x) => x.side === 'S'), R = App.model.room;
+  return +(R.L / 2 - 0.05 - a.w / 2).toFixed(3);
+});
+ok('a move is clamped inside the wall', Math.abs(sc.offset - limit) < 1e-6,
+  `stopped at ${sc.offset} m, wall limit ${limit} m`);
+
+await aimAt('top');
+const pk = await screenOf('roof');
+const rBefore = await page.evaluate(() => {
+  const a = App.model.apertures.find((x) => x.side === 'roof');
+  return { offset: a.offset, offset2: a.offset2, sill: a.sill };
+});
+await dragBy(pk, 70, 45, 10);
+const rAfter = await page.evaluate(() => {
+  const a = App.model.apertures.find((x) => x.side === 'roof');
+  return { offset: +a.offset.toFixed(2), offset2: +a.offset2.toFixed(2), sill: a.sill };
+});
+ok('a skylight moves in both X and Z, not in sill',
+  rAfter.offset !== rBefore.offset && rAfter.offset2 !== rBefore.offset2 && rAfter.sill === rBefore.sill,
+  `X ${rAfter.offset} m, Z ${rAfter.offset2} m`);
+
+await aimAt('south');
+const camBefore = await page.evaluate(() => App.view.camera.position.toArray().map((v) => +v.toFixed(3)));
+const pO = await screenOf('S');
+await dragBy(pO, 70, 25, 8, ['Shift']);
+const camAfter = await page.evaluate(() => App.view.camera.position.toArray().map((v) => +v.toFixed(3)));
+ok('shift-drag still moves the camera, not the opening',
+  (await southAp()).offset === s0.offset && JSON.stringify(camBefore) !== JSON.stringify(camAfter));
+
+await page.evaluate(() => { App.resetModel(); App.setViewMode('plan'); });
+await idle();
+await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+const pP = await screenOf('S');
+if (pP) await dragBy(pP, 90, 0, 8);
+ok('a wall opening cannot be dragged edge-on in plan view',
+  (await southAp()).offset === s0.offset);
+await page.evaluate(async () => { App.setViewMode('3d'); App.resetModel(); await App.whenIdle(); });
+await idle();
+
+/* ---------------- title typography ---------------- */
+console.log('\n-- title --');
+const title = await page.evaluate(() => {
+  const t = document.querySelector('.brand-txt');
+  const b = t.querySelector('b'), sp = t.querySelector('span');
+  const cs = getComputedStyle(t);
+  const rb = b.getBoundingClientRect(), rs = sp.getBoundingClientRect();
+  const bar = document.getElementById('topbar').getBoundingClientRect();
+  return {
+    ratio: parseFloat(cs.lineHeight) / parseFloat(cs.fontSize),
+    gap: +(rs.top - rb.bottom).toFixed(2),
+    overlap: rs.top < rb.bottom,
+    fits: t.getBoundingClientRect().top >= bar.top && t.getBoundingClientRect().bottom <= bar.bottom
+  };
+});
+ok('title line-height is no longer compressed', title.ratio >= 1.25, 'ratio ' + title.ratio.toFixed(2));
+ok('title and subtitle do not collide', !title.overlap && title.gap >= 1, title.gap + ' px apart');
+ok('the title lockup fits inside the top bar', title.fits);
+
 /* ---------------- screenshots ---------------- */
 console.log('\n-- screenshots --');
 const shot = async (name) => {
@@ -381,6 +528,28 @@ await page.evaluate(() => { App.display.section.on = false; App.markDirty('secti
 await page.evaluate(() => App.openInfo('udi'));
 await shot('info-udi');
 await page.evaluate(() => closeModal());
+
+// hover highlight and a move in progress
+await page.evaluate(async () => {
+  App.resetModel(); App.setViewMode('3d');
+  App.view.setStandardView('sw'); App.view.frame();
+  await App.whenIdle();
+});
+await idle();
+await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+const pShot = await screenOf('S');
+if (pShot && pShot.visible) {
+  await page.mouse.move(pShot.sx, pShot.sy);
+  await page.waitForTimeout(120);
+  await shot('drag-hover');
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++) { await page.mouse.move(pShot.sx + i * 8, pShot.sy); await page.waitForTimeout(14); }
+  await page.screenshot({ path: join(OUT, 'drag-inprogress.png') });
+  console.log('  shot  drag-inprogress.png');
+  await page.mouse.up();
+  await idle();
+}
+await page.evaluate(async () => { App.resetModel(); await App.whenIdle(); });
 
 /* mobile */
 await page.setViewportSize({ width: 390, height: 844 });

@@ -38,7 +38,11 @@ var App = {
 
   dirty: {},
   busy: false,
-  queued: false
+  queued: false,
+
+  drag: null,        // in-flight aperture move
+  hover: null,       // aperture under the pointer
+  undoStack: []
 };
 
 /* --- boot ---------------------------------------------------------------- */
@@ -63,6 +67,7 @@ App.init = function () {
   this.loadScenarios();
 
   this.rebuildGeometry();
+  this.initApertureDrag();
   this.view.frame();
   this.view.setViewMode('3d', this.visibilityOpts());
   this.applySun();
@@ -1134,6 +1139,205 @@ App.stepAnimation = function (dt) {
   if (!this.busy) this.schedule(0);
 };
 
+/* --- dragging an opening --------------------------------------------------
+   Openings are draggable at any time, with no mode to turn on first. Three
+   guards keep that from fighting the camera:
+     * a modifier or a non-primary button always means orbit/pan, never move
+     * a 4 px threshold, so a click that does not travel only selects
+     * touch needs a ~300 ms press-and-hold, so a swipe still orbits
+   Every move is undoable with Ctrl/Cmd+Z.                                   */
+
+var DRAG_THRESHOLD = 4;        // px before a press becomes a move
+var DRAG_SNAP = 0.05;          // m; hold Alt for free placement
+var TOUCH_HOLD_MS = 300;
+
+/** True when this press should be left to the camera controls. */
+function pressIsCameraGesture(e) {
+  return e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey;
+}
+
+App.initApertureDrag = function () {
+  var self = this, canvas = $('#view');
+
+  // OrbitCtl asks first; returning true means we have taken the press
+  this.view.ctl.claim = function (e) {
+    if (pressIsCameraGesture(e)) return false;
+    var hit = self.view.pickAperture(self.model, e.clientX, e.clientY);
+    if (!hit) return false;
+
+    if (e.pointerType === 'touch') {
+      // let the camera keep the gesture until the hold completes
+      self._touchHold = {
+        id: e.pointerId, x: e.clientX, y: e.clientY, hit: hit,
+        timer: setTimeout(function () {
+          self._touchHold = null;
+          self.view.ctl.suspend = true;      // cancel the orbit in flight
+          self.startDrag(hit, e.clientX, e.clientY, e.pointerId);
+        }, TOUCH_HOLD_MS)
+      };
+      return false;
+    }
+    canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+    self.startDrag(hit, e.clientX, e.clientY, e.pointerId);
+    e.preventDefault();
+    return true;
+  };
+
+  canvas.addEventListener('pointermove', function (e) {
+    if (self.drag) { self.moveDrag(e); return; }
+    if (self._touchHold && e.pointerId === self._touchHold.id) {
+      // a finger that travels is a swipe, not a hold
+      if (Math.hypot(e.clientX - self._touchHold.x, e.clientY - self._touchHold.y) > 6) {
+        clearTimeout(self._touchHold.timer);
+        self._touchHold = null;
+      }
+      return;
+    }
+    if (e.buttons) return;                   // orbiting — do not re-pick
+    self.updateHover(e.clientX, e.clientY);
+  });
+
+  ['pointerup', 'pointercancel'].forEach(function (t) {
+    canvas.addEventListener(t, function (e) {
+      if (self._touchHold) { clearTimeout(self._touchHold.timer); self._touchHold = null; }
+      if (self.drag) self.endDrag(e);
+    });
+  });
+  canvas.addEventListener('pointerleave', function () {
+    if (!self.drag) self.updateHover(null, null);
+  });
+};
+
+/** Highlight whatever opening the pointer is over. */
+App.updateHover = function (x, y) {
+  var hit = x == null ? null : this.view.pickAperture(this.model, x, y);
+  var ap = hit ? hit.aperture : null;
+  if (ap === this.hover) return;
+  this.hover = ap;
+  this.view.highlightAperture(this.model, ap, false);
+  $('#view').classList.toggle('over-aperture', !!ap);
+};
+
+/** The plane an opening slides in: its slab's mid-depth face plane. */
+function aperturePlane(F) {
+  var n = new THREE.Vector3(F.N[0], F.N[1], F.N[2]);
+  var o = fpt(F, 0, 0, F.t / 2);
+  return new THREE.Plane().setFromNormalAndCoplanarPoint(n, new THREE.Vector3(o[0], o[1], o[2]));
+}
+/** Where a ray meets that plane, in the face's own (u, v). Null if edge-on. */
+function rayToFaceUV(ray, F, plane) {
+  var d = ray.ray.direction;
+  if (Math.abs(d.x * F.N[0] + d.y * F.N[1] + d.z * F.N[2]) < 0.15) return null;
+  var hit = ray.ray.intersectPlane(plane, new THREE.Vector3());
+  if (!hit) return null;
+  var L = toLocal(F, [hit.x, hit.y, hit.z]);
+  return { u: L.u, v: L.v };
+}
+
+App.startDrag = function (hit, x, y, pointerId) {
+  var ap = hit.aperture, F = frameFor(ap.side, this.model.room);
+  var plane = aperturePlane(F);
+  var uv = rayToFaceUV(hit.ray, F, plane);
+  if (!uv) {
+    this.toast('That opening is edge-on to the camera — orbit round to move it.', 'err');
+    return;
+  }
+  this.drag = {
+    ap: ap, F: F, plane: plane, pointerId: pointerId,
+    u0: uv.u, v0: uv.v, x0: x, y0: y, moved: false,
+    offset0: ap.offset, sill0: ap.sill, offset20: ap.offset2
+  };
+  UI.selectedAperture = ap.id;
+  this.hover = ap;
+  this.view.highlightAperture(this.model, ap, true);
+  $('#view').classList.add('dragging');
+  UI.sync();
+};
+
+App.moveDrag = function (e) {
+  var d = this.drag;
+  if (!d || (d.pointerId != null && e.pointerId !== d.pointerId)) return;
+  if (!d.moved && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < DRAG_THRESHOLD) return;
+  if (!d.moved) { d.moved = true; this.pushUndo(d.ap); }
+
+  var uv = rayToFaceUV(this.view.pointerRay(e.clientX, e.clientY), d.F, d.plane);
+  if (!uv) return;
+
+  var snap = e.altKey ? 0 : DRAG_SNAP;
+  var q = function (v) { return snap ? Math.round(v / snap) * snap : v; };
+  var ap = d.ap, R = this.model.room;
+
+  ap.offset = q(d.offset0 + (uv.u - d.u0));
+  if (ap.side === 'roof') {
+    ap.offset2 = q(d.offset20 + (uv.v - d.v0));
+  } else {
+    ap.sill = q(d.sill0 + (uv.v - d.v0));
+    // a door wants to stay on the floor unless it is deliberately lifted
+    if (ap.kind === 'door' && Math.abs(ap.sill) < 0.1) ap.sill = 0;
+  }
+  clampAperture(ap, R);
+
+  // rebuild the meshes now so the opening tracks the pointer with no lag; the
+  // analysis is debounced separately and drops to preview quality
+  this.rebuildGeometry();
+  this.view.highlightAperture(this.model, ap, true);
+  this.showDragChip(e.clientX, e.clientY, ap);
+  this.markDirty('bake', true);
+};
+
+App.endDrag = function (e) {
+  var d = this.drag;
+  if (!d) return;
+  this.drag = null;
+  $('#view').classList.remove('dragging');
+  $('#dragchip').classList.remove('on');
+  this.view.highlightAperture(this.model, this.hover, false);
+
+  if (!d.moved) {                          // a click, not a drag: just select
+    var ex = $('#panel-openings'); if (ex) ex.setAttribute('open', '');
+    this.toast('Selected ' + d.ap.name + ' — drag it to move it.');
+    this.markDirty('dims');
+    UI.sync();
+    return;
+  }
+  this.live = false;
+  this.markDirty('geometry');
+  UI.sync();
+  this.toast('Moved ' + d.ap.name + ' — Ctrl+Z to undo.', 'ok');
+};
+
+App.showDragChip = function (x, y, ap) {
+  var chip = $('#dragchip'), r = $('#stage').getBoundingClientRect();
+  chip.classList.add('on');
+  chip.style.left = (x - r.left) + 'px';
+  chip.style.top = (y - r.top) + 'px';
+  chip.innerHTML = ap.side === 'roof'
+    ? '<i>X</i> <b>' + m2(ap.offset) + '</b> m &nbsp; <i>Z</i> <b>' + m2(ap.offset2) + '</b> m'
+    : '<i>offset</i> <b>' + m2(ap.offset) + '</b> m &nbsp; <i>sill</i> <b>' + m2(ap.sill) + '</b> m';
+};
+
+/* --- undo for moves ------------------------------------------------------ */
+
+App.pushUndo = function (ap) {
+  this.undoStack.push({
+    id: ap.id, name: ap.name,
+    offset: ap.offset, sill: ap.sill, offset2: ap.offset2
+  });
+  if (this.undoStack.length > 20) this.undoStack.shift();
+};
+
+App.undoMove = function () {
+  var u = this.undoStack.pop();
+  if (!u) { this.toast('Nothing to undo.'); return; }
+  var ap = null, aps = this.model.apertures;
+  for (var i = 0; i < aps.length; i++) if (aps[i].id === u.id) ap = aps[i];
+  if (!ap) { this.toast('That opening no longer exists.', 'err'); return; }
+  ap.offset = u.offset; ap.sill = u.sill; ap.offset2 = u.offset2;
+  this.markDirty('geometry');
+  UI.sync();
+  this.toast('Undid the move of ' + u.name + '.');
+};
+
 /* --- global wiring ------------------------------------------------------- */
 
 function wireGlobalEvents() {
@@ -1201,6 +1405,8 @@ function wireGlobalEvents() {
   document.addEventListener('keydown', function (e) {
     if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     var k = e.key.toLowerCase();
+    if (k === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); App.undoMove(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (k === 'escape') { closeModal(); App.closeDimEdit(); }
     else if (k === 'f') { App.view.frame(); App.dirty.labels = true; }
     else if (k === 'p') App.setViewMode(App.display.viewMode === 'plan' ? '3d' : 'plan');
