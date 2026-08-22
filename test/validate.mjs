@@ -38,6 +38,11 @@ await page.waitForFunction(() => window.App && App.result && App.field, null, { 
 /** Wait until nothing is scheduled, running or queued. */
 const idle = () => page.evaluate(() => App.whenIdle());
 await idle();
+// the first-run tour puts a modal overlay over everything; dismiss it so the
+// interaction tests below drive the real interface (it gets its own section)
+await page.waitForFunction(() => window.Tour && Tour.active, null, { timeout: 10000 });
+ok('the guided tour runs on a first visit', true);
+await page.evaluate(() => Tour.end(false));
 ok('app boots and produces a first result', true);
 const rail = await page.evaluate(() => ({
   total: document.querySelectorAll('.panel').length,
@@ -474,6 +479,64 @@ ok('title line-height is no longer compressed', title.ratio >= 1.25, 'ratio ' + 
 ok('title and subtitle do not collide', !title.overlap && title.gap >= 1, title.gap + ' px apart');
 ok('the title lockup fits inside the top bar', title.fits);
 
+/* ---------------- guided tour ---------------- */
+console.log('\n-- guided tour --');
+
+const tour = await page.evaluate(async () => {
+  Tour.end(false);
+  Tour.start(true);
+  const n = Tour.steps.length;
+  const fits = [];
+  for (let k = 0; k < n; k++) {
+    Tour.i = k; Tour.render();
+    const c = document.getElementById('tour-card').getBoundingClientRect();
+    fits.push(c.left >= -1 && c.top >= -1 && c.right <= innerWidth + 1 && c.bottom <= innerHeight + 1);
+  }
+  // the toolbar step opens a panel to demonstrate, and must put it back
+  const railStep = Tour.steps.findIndex((x) => x.target === '#rail');
+  Tour.i = railStep; Tour.render();
+  const openedDuring = document.getElementById('panel-room').open;
+  Tour.go(1);
+  const closedAfter = !document.getElementById('panel-room').open;
+  Tour.i = Tour.steps.length - 1; Tour.render();
+  Tour.go(1);                                     // finish
+  let flag = null; try { flag = localStorage.getItem(TOUR_KEY); } catch (e) {}
+  return {
+    n, allFit: fits.every(Boolean), offscreen: fits.filter((f) => !f).length,
+    openedDuring, closedAfter, active: Tour.active, flag,
+    dim: getComputedStyle(document.getElementById('tour')).backgroundColor
+  };
+});
+ok('the tour has a full set of steps', tour.n >= 8, tour.n + ' steps');
+ok('every tour card stays on screen', tour.allFit, tour.offscreen + ' offscreen');
+ok('a step that opens a panel puts it back', tour.openedDuring && tour.closedAfter);
+ok('finishing closes the tour and records it', !tour.active && tour.flag === 'done', 'flag = ' + tour.flag);
+
+const replay = await page.evaluate(async () => {
+  const auto = tourSeen() === false;              // must be marked as seen by now
+  document.getElementById('btn-help').click();
+  await new Promise((r) => setTimeout(r, 60));
+  const btn = document.getElementById('start-tour');
+  const had = !!btn;
+  if (btn) btn.click();
+  await new Promise((r) => setTimeout(r, 60));
+  const running = Tour.active;
+  Tour.end(false);
+  closeModal();
+  return { auto, had, running };
+});
+ok('the tour does not re-run once it has been seen', !replay.auto);
+ok('Help offers a replay button that starts the tour', replay.had && replay.running);
+
+const narrow = await page.evaluate(() => {
+  // statistics is hidden on a phone, so its step must drop out of the sequence
+  const all = TOUR_STEPS.length;
+  const before = Tour._visible().length;
+  return { all, before };
+});
+ok('steps are drawn from the full script', narrow.before === narrow.all,
+  `${narrow.before} of ${narrow.all} visible at ${await page.evaluate(() => innerWidth)} px`);
+
 /* ---------------- screenshots ---------------- */
 console.log('\n-- screenshots --');
 const shot = async (name) => {
@@ -535,6 +598,16 @@ await page.evaluate(() => App.openInfo('udi'));
 await shot('info-udi');
 await page.evaluate(() => closeModal());
 
+await page.evaluate(() => { Tour.end(false); Tour.start(true); });
+await page.waitForTimeout(320);
+await page.screenshot({ path: join(OUT, 'tour-welcome.png') });
+console.log('  shot  tour-welcome.png');
+await page.evaluate(() => { Tour.i = Tour.steps.findIndex((x) => x.target === '#rail'); Tour.render(); });
+await page.waitForTimeout(320);
+await page.screenshot({ path: join(OUT, 'tour-toolbar.png') });
+console.log('  shot  tour-toolbar.png');
+await page.evaluate(() => Tour.end(false));
+
 // hover highlight and a move in progress
 await page.evaluate(async () => {
   App.resetModel(); App.setViewMode('3d');
@@ -571,6 +644,9 @@ const mobile = await page.evaluate(() => {
   };
 });
 ok('mobile layout stacks the rail below the viewport', mobile.railBelowStage);
+const mTour = await page.evaluate(() => ({ all: TOUR_STEPS.length, vis: Tour._visible().length }));
+ok('tour steps with hidden targets drop out on a phone', mTour.vis < mTour.all && mTour.vis >= 7,
+  `${mTour.vis} of ${mTour.all} steps`);
 ok('no horizontal page scroll at 390 px', mobile.noHScroll, 'canvas ' + mobile.canvasW + ' px wide');
 await page.setViewportSize({ width: 1440, height: 900 });
 

@@ -40,6 +40,7 @@ const MODULES = [
   'src/export.js',
   'src/presets.js',
   'src/ui.js',
+  'src/tour.js',
   'src/main.js',
 ];
 

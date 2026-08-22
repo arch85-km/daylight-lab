@@ -76,6 +76,10 @@ App.init = function () {
   UI.sync();
   this.run();
   startRenderLoop();
+
+  // first visit in this browser: walk the student round the interface once
+  initTour();
+  if (!tourSeen()) setTimeout(function () { Tour.start(false); }, 900);
 };
 
 /* --- status, toasts, progress -------------------------------------------- */
@@ -1353,6 +1357,9 @@ function wireGlobalEvents() {
   });
   $('#btn-help').addEventListener('click', function () { App.openInfo('help'); });
   $('#modal-close').addEventListener('click', closeModal);
+  $('#modal-body').addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'start-tour') { closeModal(); Tour.start(true); }
+  });
   $('#modal-bg').addEventListener('click', function (e) { if (e.target === $('#modal-bg')) closeModal(); });
 
   $('#rail-toggle').addEventListener('click', function () {
@@ -1407,7 +1414,9 @@ function wireGlobalEvents() {
     var k = e.key.toLowerCase();
     if (k === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); App.undoMove(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (k === 'escape') { closeModal(); App.closeDimEdit(); }
+    if (k === 'escape') { if (Tour.active) Tour.end(false); closeModal(); App.closeDimEdit(); }
+    else if (Tour.active && (k === 'arrowright' || k === 'enter')) { e.preventDefault(); Tour.go(1); }
+    else if (Tour.active && k === 'arrowleft') { e.preventDefault(); Tour.go(-1); }
     else if (k === 'f') { App.view.frame(); App.dirty.labels = true; }
     else if (k === 'p') App.setViewMode(App.display.viewMode === 'plan' ? '3d' : 'plan');
     else if (k === 'r') { App.rays.enabled = !App.rays.enabled; App.markDirty('rays'); UI.sync(); }

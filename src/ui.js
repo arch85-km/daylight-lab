@@ -1237,6 +1237,7 @@ var INFO = {
     title: 'Daylight Lab',
     html: '<p>A parametric room, a real sun, and a workplane grid you can read against a legend. Everything recalculates ' +
       'as you change the model.</p>' +
+      '<p><button class="btn primary" id="start-tour" type="button">Start the guided tour</button></p>' +
       '<h3>Getting started</h3><ul>' +
       '<li>Pick a <b>metric</b> along the top. Illuminance and Daylight Factor are instant; UDI, DA, ASE and Sun hours run ' +
       'the full year and take a few seconds.</li>' +

@@ -475,6 +475,48 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 .dot.stale { background: var(--bad); }
 @keyframes pulse { 50% { opacity: .3; } }
 
+/* ---------- guided tour ------------------------------------------------- */
+#tour { position: fixed; inset: 0; z-index: 200; display: none; }
+#tour.on { display: block; }
+
+/* the spotlight IS the hole: one huge shadow spread dims everything else */
+#tour-hole {
+  position: absolute; border-radius: 8px; pointer-events: none;
+  box-shadow: 0 0 0 9999px color-mix(in srgb, #05070c 62%, transparent),
+              0 0 0 2px var(--accent), 0 0 22px 4px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: left .22s ease, top .22s ease, width .22s ease, height .22s ease;
+}
+/* steps with no target dim the whole screen instead of cutting a hole */
+#tour.no-hole { background: color-mix(in srgb, #05070c 62%, transparent); }
+
+#tour-card {
+  position: absolute; width: min(360px, calc(100vw - 28px));
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 13px 15px 12px;
+  transition: left .22s ease, top .22s ease;
+}
+#tour-card .t-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+#tour-card .t-step {
+  font-family: var(--font-num); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .06em; color: var(--ink-3);
+}
+#tour-card .t-head .btn { margin-left: auto; }
+#tour-card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 650; letter-spacing: -.005em; }
+#tour-card p { margin: 0 0 13px; font-size: 12.5px; line-height: 1.55; color: var(--ink-2); }
+#tour-card .t-foot { display: flex; align-items: center; gap: 7px; }
+#tour-card .t-dots { display: flex; gap: 4px; margin-right: auto; }
+#tour-card .t-dots i {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--line);
+  display: block; transition: background var(--dur), transform var(--dur);
+}
+#tour-card .t-dots i.on { background: var(--accent); transform: scale(1.35); }
+
+@media (max-width: 560px) {
+  #tour-card { padding: 11px 13px 11px; }
+  #tour-card h3 { font-size: 14px; }
+  #tour-card p { font-size: 12px; margin-bottom: 11px; }
+}
+
 /* ---------- modal ------------------------------------------------------ */
 #modal-bg {
   position: fixed; inset: 0; z-index: 100; display: none;

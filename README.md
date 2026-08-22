@@ -108,6 +108,11 @@ any number.
 
 ## Using it
 
+A guided tour runs the first time a student opens the app — nine or ten
+spotlit steps covering the metrics, the model, the toolbar, the legend, the
+statistics, the time sliders and the export. It can be skipped at any point
+and replayed from **Start the guided tour** in the help panel.
+
 - Pick a metric along the top. Illuminance and Daylight Factor are instant; the
   annual metrics take a few seconds.
 - Drag to orbit, right-drag or shift-drag to pan, scroll to zoom. One finger
