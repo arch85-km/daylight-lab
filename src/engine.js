@@ -78,6 +78,15 @@ Engine.prototype.setGeometry = function (tri, materials) {
   return Promise.resolve(this.inline.setGeometry(tri, materials));
 };
 
+/** Install the grid without baking — enough for the direct-sun routines. */
+Engine.prototype.setPoints = function (pts, nrm) {
+  if (this.mode === 'worker') {
+    var a = pts.slice(), b = nrm.slice();
+    return this._post({ cmd: 'points', pts: a, nrm: b }, [a.buffer, b.buffer]);
+  }
+  return Promise.resolve(this.inline.setPoints(pts, nrm));
+};
+
 Engine.prototype.bake = function (pts, nrm, cfg, onProgress) {
   var self = this;
   if (this.mode === 'worker') {
@@ -119,6 +128,19 @@ Engine.prototype.point = function (o) {
   return Promise.resolve({ lux: out, diffuse: df, direct: dir });
 };
 
+/** Direct beam only — no daylight-coefficient matrix required. */
+Engine.prototype.direct = function (o) {
+  if (this.mode === 'worker') {
+    return this._post({
+      cmd: 'direct', sunDir: o.sunDir, Enormal: o.Enormal,
+      radius: o.radius, samples: o.samples
+    });
+  }
+  return Promise.resolve({
+    lux: this.inline.directSun(o.sunDir, o.Enormal, o.radius, o.samples || 1)
+  });
+};
+
 Engine.prototype.sunVisible = function (sunDir) {
   if (this.mode === 'worker') return this._post({ cmd: 'sunvis', sunDir: sunDir });
   return Promise.resolve({ vis: this.inline.sunVisible(sunDir, 1) });
@@ -131,6 +153,7 @@ Engine.prototype.annual = function (o, onProgress) {
     var c = o.climate;
     return this._post({
       cmd: 'annualBegin',
+      df: o.df ? Float32Array.from(o.df) : null,
       dni: c.dni.slice(), dhi: c.dhi.slice(), ghi: c.ghi.slice(), temp: c.temp.slice(),
       climateName: c.name, site: o.site, udi: o.udi, targetLux: o.targetLux,
       occStart: o.occStart, occEnd: o.occEnd, aseLux: o.aseLux,

@@ -23,16 +23,24 @@ var REINHART_ROWS = {
 function buildSkyPatches(mf) {
   var rows = REINHART_ROWS[mf] || REINHART_ROWS[1];
   var bandDeg = 90 / (rows.length + 0.5);      // last half-band is the zenith cap
-  var alt = [], azi = [], omega = [], dx = [], dy = [], dz = [], row = [];
+  var alt = [], azi = [], omega = [], pomega = [], dx = [], dy = [], dz = [], row = [];
 
   for (var r = 0; r < rows.length; r++) {
     var a1 = r * bandDeg, a2 = (r + 1) * bandDeg;
     var ac = (a1 + a2) / 2, n = rows[r];
     var om = (2 * Math.PI / n) * (Math.sin(a2 * DEG) - Math.sin(a1 * DEG));
+    /*
+     * Projected solid angle, integrated exactly rather than taken at the patch
+     * centre:  ∫ sin a dω  over the band  =  (π/n)(sin²a2 − sin²a1).
+     * Using ω·sin(a_centre) instead over-counts by 0.55% and put a systematic
+     * −0.55% on every daylight factor. Caught by the audit's unobstructed
+     * benchmark, which plateaued at 99.45% instead of converging on 100%.
+     */
+    var pom = (Math.PI / n) * (Math.pow(Math.sin(a2 * DEG), 2) - Math.pow(Math.sin(a1 * DEG), 2));
     for (var i = 0; i < n; i++) {
       var az = (i + 0.5) * 360 / n;
       var ca = Math.cos(ac * DEG), zr = az * DEG;
-      alt.push(ac); azi.push(az); omega.push(om); row.push(r);
+      alt.push(ac); azi.push(az); omega.push(om); pomega.push(pom); row.push(r);
       dx.push(ca * Math.sin(zr)); dy.push(Math.sin(ac * DEG)); dz.push(-ca * Math.cos(zr));
     }
   }
@@ -40,6 +48,7 @@ function buildSkyPatches(mf) {
   var capAlt = rows.length * bandDeg;
   alt.push((capAlt + 90) / 2); azi.push(0); row.push(rows.length);
   omega.push(2 * Math.PI * (1 - Math.sin(capAlt * DEG)));
+  pomega.push(Math.PI * (1 - Math.pow(Math.sin(capAlt * DEG), 2)));
   var mid = (capAlt + 90) / 2 * DEG;
   dx.push(0); dy.push(Math.sin(mid)); dz.push(0);
   // normalise the cap direction (it is straight up in practice)
@@ -48,7 +57,8 @@ function buildSkyPatches(mf) {
   return {
     mf: mf, n: alt.length,
     alt: Float64Array.from(alt), azi: Float64Array.from(azi),
-    omega: Float64Array.from(omega), row: Int32Array.from(row),
+    omega: Float64Array.from(omega), pomega: Float64Array.from(pomega),
+    row: Int32Array.from(row),
     dx: Float64Array.from(dx), dy: Float64Array.from(dy), dz: Float64Array.from(dz),
     /** Index of the patch containing a direction (dy > 0), else -1 for ground. */
     lookup: function (x, y, z) {
@@ -183,7 +193,7 @@ function perezRelative(patches, sun, dni, dhi, dayOfYear) {
 /** Diffuse horizontal illuminance produced by a patch-luminance vector. */
 function horizontalFromPatches(patches, lum) {
   var s = 0;
-  for (var i = 0; i < patches.n; i++) s += lum[i] * Math.sin(patches.alt[i] * DEG) * patches.omega[i];
+  for (var i = 0; i < patches.n; i++) s += lum[i] * patches.pomega[i];
   return s;
 }
 

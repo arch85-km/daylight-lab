@@ -36,7 +36,16 @@ function exportImage(view, ctx, o) {
   view.renderer.setSize(W, H, false);
   view.render();
 
-  var titleH = o.showTitle === false ? 0 : Math.round(78 * scale);
+  var titleH = 0, titleRows = 3;
+  if (o.showTitle !== false) {
+    // measure the metadata first: the block grows if it needs a fourth row
+    var probeC = document.createElement('canvas').getContext('2d');
+    probeC.font = '650 15px system-ui, sans-serif';
+    var hW = probeC.measureText((METRICS[ctx.metric] || {}).label || '').width;
+    var mx0 = Math.max(210, Math.ceil(16 + hW + 28));
+    titleRows = titleBlockLayout(probeC, ctx.meta || [], Math.max(220, W - mx0 - 210)).rows;
+    titleH = Math.round(titleBlockHeight(titleRows) * scale);
+  }
   var out = document.createElement('canvas');
   out.width = cw; out.height = ch + titleH;
   var g = out.getContext('2d');
@@ -59,10 +68,15 @@ function exportImage(view, ctx, o) {
   g.scale(scale, scale);
 
   if (o.showValues && ctx.labels && ctx.labels.length) drawValueLabels(g, ctx.labels, ink, panel);
+  if (o.showDimensions !== false && ctx.dimLabels && ctx.dimLabels.length) {
+    drawDimensionLabels(g, ctx.dimLabels, ink, panel, line);
+  }
   drawNorthArrow(g, W - 52, 52, 26, ctx.northAngle || 0, ink, ink3, panel, line);
 
   if (o.showLegend !== false && ctx.scale) {
-    drawLegendCanvas(g, W - 200, 96, 186, ctx.metric === 'udi' ? 300 : 260, ctx, ink, panel, line);
+    // measured once at x = 0 to learn its width, then placed flush right
+    var probe = drawLegendCanvas(g, -9999, -9999, ctx, ink, panel, line, ink2, ink3);
+    drawLegendCanvas(g, W - 14 - probe.w, 96, ctx, ink, panel, line, ink2, ink3);
   }
   if (o.showStats !== false && ctx.stats) {
     drawStatsCanvas(g, 14, H - 128, 200, 114, ctx, ink, ink2, panel, line);
@@ -86,6 +100,27 @@ function drawValueLabels(g, labels, ink, panel) {
     var L = labels[i];
     g.strokeText(L.text, L.x, L.y);
     g.fillText(L.text, L.x, L.y);
+  }
+  g.restore();
+}
+
+/**
+ * Dimension labels, as bordered chips matching the on-screen `.dim` style.
+ * The dimension LINES already survive the export, being 3D geometry — only
+ * their numbers live in the HTML overlay and have to be composited here.
+ */
+function drawDimensionLabels(g, labels, ink, panel, line) {
+  g.save();
+  g.font = '600 10.5px ui-monospace, SFMono-Regular, monospace';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (var i = 0; i < labels.length; i++) {
+    var L = labels[i], w = g.measureText(L.text).width + 10, h = 15;
+    g.fillStyle = panel; g.globalAlpha = 0.92;
+    roundRect(g, L.x - w / 2, L.y - h / 2, w, h, 3); g.fill();
+    g.globalAlpha = 1;
+    g.strokeStyle = line; g.lineWidth = 1; g.stroke();
+    g.fillStyle = ink;
+    g.fillText(L.text, L.x, L.y + 0.5);
   }
   g.restore();
 }
@@ -138,6 +173,31 @@ function drawStatsCanvas(g, x, y, w, h, ctx, ink, ink2, panel, line) {
   g.restore();
 }
 
+/**
+ * Metadata layout for the title block: columns are measured from the actual
+ * text rather than assumed, so a long climate name or a wide UDI threshold
+ * string can never overrun the next column's key. (The old fixed
+ * colW = 190 / keyOff = 74 put "Reflectance" on top of "…3.20 m".)
+ */
+function titleBlockLayout(g, meta, availW) {
+  g.save();
+  g.font = '10.5px ui-monospace, SFMono-Regular, monospace';
+  var keyW = 0, valW = 0;
+  for (var i = 0; i < meta.length; i++) {
+    keyW = Math.max(keyW, g.measureText(meta[i][0]).width);
+    valW = Math.max(valW, g.measureText(meta[i][1]).width);
+  }
+  g.restore();
+  var keyOff = Math.ceil(keyW) + 10;
+  var colW = keyOff + Math.ceil(valW) + 26;
+  var cols = Math.max(1, Math.floor(availW / colW));
+  var rows = Math.max(3, Math.ceil(meta.length / cols));
+  return { keyOff: keyOff, colW: colW, cols: cols, rows: rows };
+}
+
+/** Height the title block needs for `rows` metadata rows. */
+function titleBlockHeight(rows) { return Math.max(78, 40 + rows * 15 + 16); }
+
 function drawTitleBlock(g, x, y, w, h, scale, ctx, ink, ink2, ink3, panel, line) {
   g.save();
   g.fillStyle = panel; g.fillRect(x, y, w, h);
@@ -153,16 +213,23 @@ function drawTitleBlock(g, x, y, w, h, scale, ctx, ink, ink2, ink3, panel, line)
   g.font = '11.5px system-ui, sans-serif'; g.fillStyle = ink2;
   g.fillText(ctx.model ? ctx.model.name : 'Model', 16, Y + 41);
 
-  // metadata, laid out in two columns
-  var mid = ctx.meta || [];
+  var meta = ctx.meta || [];
+  // Start the metadata after the title, not at a fixed 210 — "Useful Daylight
+  // Illuminance" is wider than that and used to sit on top of the first key.
+  g.font = '650 15px system-ui, sans-serif';
+  var headW = g.measureText(M.label).width;
+  g.font = '11.5px system-ui, sans-serif';
+  headW = Math.max(headW, g.measureText(ctx.model ? ctx.model.name : 'Model').width);
+  var x0 = Math.max(210, Math.ceil(16 + headW + 28)), rightReserve = 210;
+  var lay = titleBlockLayout(g, meta, Math.max(colWMin(), W - x0 - rightReserve));
+
   g.font = '10.5px ui-monospace, SFMono-Regular, monospace';
-  var colW = 190, x0 = 210;
-  for (var i = 0; i < mid.length; i++) {
-    var col = Math.floor(i / 3), row = i % 3;
-    var mx = x0 + col * colW, my = Y + 20 + row * 15;
-    if (mx > W - 210) break;
-    g.fillStyle = ink3; g.fillText(mid[i][0], mx, my);
-    g.fillStyle = ink2; g.fillText(mid[i][1], mx + 74, my);
+  for (var i = 0; i < meta.length; i++) {
+    var col = Math.floor(i / lay.rows), row = i % lay.rows;
+    var mx = x0 + col * lay.colW, my = Y + 20 + row * 15;
+    if (mx + lay.colW - 26 > W - rightReserve + 26) break;
+    g.fillStyle = ink3; g.fillText(meta[i][0], mx, my);
+    g.fillStyle = ink2; g.fillText(meta[i][1], mx + lay.keyOff, my);
   }
 
   // copyright, bottom left — always present in an exported image
@@ -173,6 +240,7 @@ function drawTitleBlock(g, x, y, w, h, scale, ctx, ink, ink2, ink3, panel, line)
   g.fillText('Daylight Lab — daylighting teaching tool', W - 16, Y + H - 12);
   g.restore();
 }
+function colWMin() { return 220; }
 
 /** Model + settings as JSON, round-trippable through loadModelJson(). */
 function exportJson(model, extra) {

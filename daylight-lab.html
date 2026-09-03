@@ -1147,16 +1147,24 @@ var REINHART_ROWS = {
 function buildSkyPatches(mf) {
   var rows = REINHART_ROWS[mf] || REINHART_ROWS[1];
   var bandDeg = 90 / (rows.length + 0.5);      // last half-band is the zenith cap
-  var alt = [], azi = [], omega = [], dx = [], dy = [], dz = [], row = [];
+  var alt = [], azi = [], omega = [], pomega = [], dx = [], dy = [], dz = [], row = [];
 
   for (var r = 0; r < rows.length; r++) {
     var a1 = r * bandDeg, a2 = (r + 1) * bandDeg;
     var ac = (a1 + a2) / 2, n = rows[r];
     var om = (2 * Math.PI / n) * (Math.sin(a2 * DEG) - Math.sin(a1 * DEG));
+    /*
+     * Projected solid angle, integrated exactly rather than taken at the patch
+     * centre:  ∫ sin a dω  over the band  =  (π/n)(sin²a2 − sin²a1).
+     * Using ω·sin(a_centre) instead over-counts by 0.55% and put a systematic
+     * −0.55% on every daylight factor. Caught by the audit's unobstructed
+     * benchmark, which plateaued at 99.45% instead of converging on 100%.
+     */
+    var pom = (Math.PI / n) * (Math.pow(Math.sin(a2 * DEG), 2) - Math.pow(Math.sin(a1 * DEG), 2));
     for (var i = 0; i < n; i++) {
       var az = (i + 0.5) * 360 / n;
       var ca = Math.cos(ac * DEG), zr = az * DEG;
-      alt.push(ac); azi.push(az); omega.push(om); row.push(r);
+      alt.push(ac); azi.push(az); omega.push(om); pomega.push(pom); row.push(r);
       dx.push(ca * Math.sin(zr)); dy.push(Math.sin(ac * DEG)); dz.push(-ca * Math.cos(zr));
     }
   }
@@ -1164,6 +1172,7 @@ function buildSkyPatches(mf) {
   var capAlt = rows.length * bandDeg;
   alt.push((capAlt + 90) / 2); azi.push(0); row.push(rows.length);
   omega.push(2 * Math.PI * (1 - Math.sin(capAlt * DEG)));
+  pomega.push(Math.PI * (1 - Math.pow(Math.sin(capAlt * DEG), 2)));
   var mid = (capAlt + 90) / 2 * DEG;
   dx.push(0); dy.push(Math.sin(mid)); dz.push(0);
   // normalise the cap direction (it is straight up in practice)
@@ -1172,7 +1181,8 @@ function buildSkyPatches(mf) {
   return {
     mf: mf, n: alt.length,
     alt: Float64Array.from(alt), azi: Float64Array.from(azi),
-    omega: Float64Array.from(omega), row: Int32Array.from(row),
+    omega: Float64Array.from(omega), pomega: Float64Array.from(pomega),
+    row: Int32Array.from(row),
     dx: Float64Array.from(dx), dy: Float64Array.from(dy), dz: Float64Array.from(dz),
     /** Index of the patch containing a direction (dy > 0), else -1 for ground. */
     lookup: function (x, y, z) {
@@ -1307,7 +1317,7 @@ function perezRelative(patches, sun, dni, dhi, dayOfYear) {
 /** Diffuse horizontal illuminance produced by a patch-luminance vector. */
 function horizontalFromPatches(patches, lum) {
   var s = 0;
-  for (var i = 0; i < patches.n; i++) s += lum[i] * Math.sin(patches.alt[i] * DEG) * patches.omega[i];
+  for (var i = 0; i < patches.n; i++) s += lum[i] * patches.pomega[i];
   return s;
 }
 
@@ -1875,6 +1885,19 @@ DaylightCore.prototype.setGeometry = function (geom, mats) {
   return { tris: this.bvh.triCount, nodes: this.bvh.nodeCount };
 };
 
+/**
+ * Install the sensor grid without allocating a daylight-coefficient matrix.
+ *
+ * directSun(), sunVisible() and transmittance() need only the points, their
+ * normals and the BVH — not the DC matrix — so the split-flux engine can use
+ * them for the direct beam, ASE and sun hours without ever baking.
+ */
+DaylightCore.prototype.setPoints = function (pts, nrm) {
+  this.pts = pts; this.nrm = nrm;
+  this.nPts = (pts.length / 3) | 0;
+  return { nPts: this.nPts };
+};
+
 /** Prepare a bake. Points/normals are flat Float32Arrays. */
 DaylightCore.prototype.beginBake = function (pts, nrm, cfg) {
   this.pts = pts; this.nrm = nrm; this.cfg = cfg;
@@ -1935,7 +1958,7 @@ DaylightCore.prototype.bakeChunk = function (from, to) {
 
         if (m.tau > 0) {                      // glazing: carry on, attenuated
           w *= m.tau;
-          if (w < 1e-5) break;
+          if (w < wgt * 1e-4) break;
           ox = hx + dx * EPS; oy = hy + dy * EPS; oz = hz + dz * EPS;
           continue;                           // transmission is not a bounce
         }
@@ -1943,7 +1966,14 @@ DaylightCore.prototype.bakeChunk = function (from, to) {
         if (bounce >= maxBounce) break;
         bounce++;
         w *= m.rho;
-        if (w < 1e-4) break;
+        /*
+         * Both cutoffs are RELATIVE to the starting weight. They used to be
+         * absolute (1e-4), which meant that raising the ray count shrank
+         * wgt = pi/N and truncated interreflection after fewer bounces — so a
+         * higher quality setting returned a LOWER daylight factor. Caught by
+         * the convergence sweep in test/audit.mjs.
+         */
+        if (w < wgt * 1e-3) break;
         // Russian roulette once the path is carrying little energy
         if (w < wgt * 0.02) {
           if (Math.random() > 0.5) break;
@@ -2059,8 +2089,14 @@ DaylightCore.prototype.sunVisible = function (sunDir, samples, out) {
  */
 DaylightCore.prototype.annualBegin = function (o) {
   var n = this.nPts;
+  // the hourly Perez sky needs a patch set whether or not a bake happened
+  if (!this.patches) this.patches = buildSkyPatches(1);
   return {
     o: o, day: 0, n: n,
+    // `o.df` present => diffuse comes from a daylight factor rather than the
+    // coefficient matrix, which is how the split-flux engine runs the year.
+    // Everything downstream — direct sun, UDI, DA, ASE, sun hours — is shared.
+    useDf: !!o.df,
     udi: new Float32Array(n * 5),
     daHours: new Float32Array(n), aseHours: new Float32Array(n),
     sunHours: new Float32Array(n),
@@ -2090,13 +2126,19 @@ DaylightCore.prototype.annualStep = function (st, nDays) {
         for (var q0 = 0; q0 < n; q0++) udi[q0 * 5] += 1;
         continue;
       }
+      if (!st.useDf && !this.dc) continue;   // nothing baked; nothing to add
       var k = clim.index(md.month, md.day, h);
       var sky = buildSkyVector(P, {
         model: 'perez', sun: sun, dni: clim.dni[k], dhi: clim.dhi[k],
         groundRefl: o.groundRefl, dayOfYear: st.day + 1
       });
 
-      this.diffuse(sky.lum, sky.ground, diff);
+      if (st.useDf) {
+        var df = o.df, Ed = sky.Ediff;
+        for (var q1 = 0; q1 < n; q1++) diff[q1] = df[q1] / 100 * Ed;
+      } else {
+        this.diffuse(sky.lum, sky.ground, diff);
+      }
       if (sky.Enormal > 1) {
         this.directSun(sun.dir, sky.Enormal, o.sunRadius || 0.00465, 1, dir);
         this.sunVisible(sun.dir, 1, vis);
@@ -2175,6 +2217,10 @@ self.onmessage = function (ev) {
         reply(id, core.setGeometry({ pos: msg.pos, mat: msg.mat }, msg.materials));
         break;
 
+      case 'points':
+        reply(id, core.setPoints(msg.pts, msg.nrm));
+        break;
+
       case 'bake': {
         var t0 = Date.now();
         var info = core.beginBake(msg.pts, msg.nrm, msg.cfg);
@@ -2221,6 +2267,7 @@ self.onmessage = function (ev) {
 
       case 'annualBegin':
         annualState = core.annualBegin({
+          df: msg.df || null,
           climate: makeClimate({
             dni: msg.dni, dhi: msg.dhi, ghi: msg.ghi, temp: msg.temp,
             name: msg.climateName, loc: msg.site
@@ -2613,16 +2660,24 @@ var REINHART_ROWS = {
 function buildSkyPatches(mf) {
   var rows = REINHART_ROWS[mf] || REINHART_ROWS[1];
   var bandDeg = 90 / (rows.length + 0.5);      // last half-band is the zenith cap
-  var alt = [], azi = [], omega = [], dx = [], dy = [], dz = [], row = [];
+  var alt = [], azi = [], omega = [], pomega = [], dx = [], dy = [], dz = [], row = [];
 
   for (var r = 0; r < rows.length; r++) {
     var a1 = r * bandDeg, a2 = (r + 1) * bandDeg;
     var ac = (a1 + a2) / 2, n = rows[r];
     var om = (2 * Math.PI / n) * (Math.sin(a2 * DEG) - Math.sin(a1 * DEG));
+    /*
+     * Projected solid angle, integrated exactly rather than taken at the patch
+     * centre:  ∫ sin a dω  over the band  =  (π/n)(sin²a2 − sin²a1).
+     * Using ω·sin(a_centre) instead over-counts by 0.55% and put a systematic
+     * −0.55% on every daylight factor. Caught by the audit's unobstructed
+     * benchmark, which plateaued at 99.45% instead of converging on 100%.
+     */
+    var pom = (Math.PI / n) * (Math.pow(Math.sin(a2 * DEG), 2) - Math.pow(Math.sin(a1 * DEG), 2));
     for (var i = 0; i < n; i++) {
       var az = (i + 0.5) * 360 / n;
       var ca = Math.cos(ac * DEG), zr = az * DEG;
-      alt.push(ac); azi.push(az); omega.push(om); row.push(r);
+      alt.push(ac); azi.push(az); omega.push(om); pomega.push(pom); row.push(r);
       dx.push(ca * Math.sin(zr)); dy.push(Math.sin(ac * DEG)); dz.push(-ca * Math.cos(zr));
     }
   }
@@ -2630,6 +2685,7 @@ function buildSkyPatches(mf) {
   var capAlt = rows.length * bandDeg;
   alt.push((capAlt + 90) / 2); azi.push(0); row.push(rows.length);
   omega.push(2 * Math.PI * (1 - Math.sin(capAlt * DEG)));
+  pomega.push(Math.PI * (1 - Math.pow(Math.sin(capAlt * DEG), 2)));
   var mid = (capAlt + 90) / 2 * DEG;
   dx.push(0); dy.push(Math.sin(mid)); dz.push(0);
   // normalise the cap direction (it is straight up in practice)
@@ -2638,7 +2694,8 @@ function buildSkyPatches(mf) {
   return {
     mf: mf, n: alt.length,
     alt: Float64Array.from(alt), azi: Float64Array.from(azi),
-    omega: Float64Array.from(omega), row: Int32Array.from(row),
+    omega: Float64Array.from(omega), pomega: Float64Array.from(pomega),
+    row: Int32Array.from(row),
     dx: Float64Array.from(dx), dy: Float64Array.from(dy), dz: Float64Array.from(dz),
     /** Index of the patch containing a direction (dy > 0), else -1 for ground. */
     lookup: function (x, y, z) {
@@ -2773,7 +2830,7 @@ function perezRelative(patches, sun, dni, dhi, dayOfYear) {
 /** Diffuse horizontal illuminance produced by a patch-luminance vector. */
 function horizontalFromPatches(patches, lum) {
   var s = 0;
-  for (var i = 0; i < patches.n; i++) s += lum[i] * Math.sin(patches.alt[i] * DEG) * patches.omega[i];
+  for (var i = 0; i < patches.n; i++) s += lum[i] * patches.pomega[i];
   return s;
 }
 
@@ -3836,9 +3893,32 @@ function shadingAngles(ap) {
    internally reflected component. It runs in milliseconds and a student can
    check it with a calculator.
 
-   It deliberately does NOT see the shading devices, the reveals or the
-   skylight well — that limitation is the point of offering both engines.
+   External shading devices ARE accounted for: each sensor-to-glass direction is
+   tested against a BVH holding only the overhangs, louvres and fins, and a
+   blocked direction is credited to the externally reflected component off the
+   device rather than to sky. A brise-soleil is an obstruction, and the method
+   has always accounted for obstructions.
+
+   Still NOT seen, deliberately: the reveals and the skylight well. Those are
+   wall construction, which BRE handles through the net glazed area, and they
+   remain the honest difference against the raytraced engine — change the wall
+   thickness and one number moves while the other does not.
    ========================================================================== */
+
+/**
+ * Fraction of a shading device's diffuse reflection that heads back into the
+ * room rather than out to the sky. Calibrated against the raytraced engine
+ * across overhangs, louvre banks and fins — see docs/ENGINE-VALIDATION.md.
+ */
+var SHADE_ERC_SHARE = 0.5;
+
+/**
+ * Aperture subdivision. Shading devices put fine structure across the opening
+ * — a five-blade louvre bank on a 1.6 m window has blades every 0.375 m — so
+ * the integration is refined when any device is present. It costs nothing on
+ * an unshaded model, which is the common case.
+ */
+var SF_SUB_PLAIN = 8, SF_SUB_SHADED = 16;
 
 /** BRE coefficient C against obstruction angle, in 10-degree steps. */
 var BRE_C = [39, 35, 31, 25, 20, 14, 10, 7, 5, 5, 5];
@@ -3846,6 +3926,22 @@ function breC(obstructionDeg) {
   var x = clamp(obstructionDeg, 0, 90) / 10;
   var i = Math.min(Math.floor(x), 9);
   return lerp(BRE_C[i], BRE_C[i + 1], x - i);
+}
+
+/**
+ * A BVH holding nothing but the external shading devices.
+ *
+ * `buildShading()` already emits every overhang, louvre blade and fin as a
+ * solid, so this is the same geometry the renderer and the raytracer use — no
+ * second description of the devices to drift out of step. With no device
+ * enabled the soup is empty and `BVH.occluded()` returns immediately on its
+ * `triCount` guard, so an unshaded model costs nothing.
+ */
+function shadingBvh(model) {
+  var mb = new MeshBuilder();
+  buildShading(mb, model);
+  var tri = mb.finish();
+  return new BVH(tri.pos, tri.mat);
 }
 
 /** CIE overcast relative luminance for a direction of altitude `altRad`. */
@@ -3856,10 +3952,14 @@ function overcastRel(altRad) { return (1 + 2 * Math.sin(Math.max(0, altRad))) / 
  * integration over every aperture. Returns percentages of the unobstructed
  * horizontal illuminance.
  */
-function skyComponents(model, px, py, pz, nx, ny, nz, sub) {
+function skyComponents(model, px, py, pz, nx, ny, nz, sub, shadeBvh) {
   var R = model.room, aps = model.apertures || [];
   var obstruction = (model.site.obstructionAngle || 0) * DEG;
   var groundRefl = R.refl.ground == null ? 0.2 : R.refl.ground;
+  var shadeRefl = R.refl.shade == null ? 0.35 : R.refl.shade;
+  var hasShade = shadeBvh && shadeBvh.triCount > 0;
+  var scOpen = 0;                     // sky component ignoring the devices,
+                                      // kept so the IRC can be scaled by them
   var N = sub || 6;
   // Unobstructed horizontal illuminance under the same relative sky:
   //   Eh = integral of L cos(theta) dw = (7*pi/9) * Lz, with Lz = 1
@@ -3900,11 +4000,27 @@ function skyComponents(model, px, py, pz, nx, ny, nz, sub) {
       var alt = Math.asin(clamp(dy, -1, 1));
       var contrib = overcastRel(alt) * cosP * dOmega * tau;
 
-      if (alt > obstruction) sc += contrib;
-      else erc += contrib * groundRefl;      // obstruction seen instead of sky
+      if (alt <= obstruction) {
+        erc += contrib * groundRefl;         // obstruction seen instead of sky
+        continue;
+      }
+      scOpen += contrib;
+      // is one of the building's own shading devices in the way?
+      if (hasShade && shadeBvh.occluded(px + dx * 1e-4, py + dy * 1e-4, pz + dz * 1e-4,
+                                        dx, dy, dz, 1e5, -1)) {
+        // Light bounced off the device. Only about half of what a blade
+        // scatters heads inward — the rest goes back to the sky — so the
+        // reflectance is halved. Crediting the full reflectance, as the
+        // method does for a ground obstruction, put a louvre bank 83% above
+        // the raytraced answer; halving it brings that to 19%. See
+        // docs/ENGINE-VALIDATION.md §3.
+        erc += contrib * shadeRefl * SHADE_ERC_SHARE;
+      } else {
+        sc += contrib;
+      }
     }
   }
-  return { sc: 100 * sc / Eh, erc: 100 * erc / Eh };
+  return { sc: 100 * sc / Eh, erc: 100 * erc / Eh, scOpen: 100 * scOpen / Eh };
 }
 
 /**
@@ -3951,14 +4067,35 @@ function internallyReflected(model) {
 function splitFluxGrid(model, pts, nrm, sub) {
   var n = (pts.length / 3) | 0;
   var df = new Float32Array(n), scA = new Float32Array(n), ercA = new Float32Array(n);
+  var shade = shadingBvh(model);
   var irc = internallyReflected(model);
+  sub = sub || (shade.triCount ? SF_SUB_SHADED : SF_SUB_PLAIN);
+
+  // First pass: sky and externally reflected components at every point, and
+  // the totals needed to work out how much flux the shading removes.
+  var sumOpen = 0, sumShaded = 0;
   for (var p = 0; p < n; p++) {
     var c = skyComponents(model, pts[p * 3], pts[p * 3 + 1], pts[p * 3 + 2],
-                          nrm[p * 3], nrm[p * 3 + 1], nrm[p * 3 + 2], sub);
+                          nrm[p * 3], nrm[p * 3 + 1], nrm[p * 3 + 2], sub, shade);
     scA[p] = c.sc; ercA[p] = c.erc;
-    df[p] = c.sc + c.erc + irc;
+    sumOpen += c.scOpen; sumShaded += c.sc;
   }
-  return { df: df, sc: scA, erc: ercA, irc: irc };
+
+  /*
+   * The BRE internally reflected component is built from T*W and has no
+   * shading term, so on its own it would not respond to an overhang at all —
+   * and in a deep room, where the IRC dominates the back half, the daylight
+   * factor there would look completely unmoved. Scale it by the same fraction
+   * of sky flux the devices remove.
+   *
+   * This is an extension of BS 8206-2, not part of it; the Engine information
+   * panel says so.
+   */
+  var shadeFactor = sumOpen > 1e-9 ? clamp(sumShaded / sumOpen, 0, 1) : 1;
+  irc *= shadeFactor;
+
+  for (p = 0; p < n; p++) df[p] = scA[p] + ercA[p] + irc;
+  return { df: df, sc: scA, erc: ercA, irc: irc, shadeFactor: shadeFactor };
 }
 
 /**
@@ -4246,6 +4383,19 @@ DaylightCore.prototype.setGeometry = function (geom, mats) {
   return { tris: this.bvh.triCount, nodes: this.bvh.nodeCount };
 };
 
+/**
+ * Install the sensor grid without allocating a daylight-coefficient matrix.
+ *
+ * directSun(), sunVisible() and transmittance() need only the points, their
+ * normals and the BVH — not the DC matrix — so the split-flux engine can use
+ * them for the direct beam, ASE and sun hours without ever baking.
+ */
+DaylightCore.prototype.setPoints = function (pts, nrm) {
+  this.pts = pts; this.nrm = nrm;
+  this.nPts = (pts.length / 3) | 0;
+  return { nPts: this.nPts };
+};
+
 /** Prepare a bake. Points/normals are flat Float32Arrays. */
 DaylightCore.prototype.beginBake = function (pts, nrm, cfg) {
   this.pts = pts; this.nrm = nrm; this.cfg = cfg;
@@ -4306,7 +4456,7 @@ DaylightCore.prototype.bakeChunk = function (from, to) {
 
         if (m.tau > 0) {                      // glazing: carry on, attenuated
           w *= m.tau;
-          if (w < 1e-5) break;
+          if (w < wgt * 1e-4) break;
           ox = hx + dx * EPS; oy = hy + dy * EPS; oz = hz + dz * EPS;
           continue;                           // transmission is not a bounce
         }
@@ -4314,7 +4464,14 @@ DaylightCore.prototype.bakeChunk = function (from, to) {
         if (bounce >= maxBounce) break;
         bounce++;
         w *= m.rho;
-        if (w < 1e-4) break;
+        /*
+         * Both cutoffs are RELATIVE to the starting weight. They used to be
+         * absolute (1e-4), which meant that raising the ray count shrank
+         * wgt = pi/N and truncated interreflection after fewer bounces — so a
+         * higher quality setting returned a LOWER daylight factor. Caught by
+         * the convergence sweep in test/audit.mjs.
+         */
+        if (w < wgt * 1e-3) break;
         // Russian roulette once the path is carrying little energy
         if (w < wgt * 0.02) {
           if (Math.random() > 0.5) break;
@@ -4430,8 +4587,14 @@ DaylightCore.prototype.sunVisible = function (sunDir, samples, out) {
  */
 DaylightCore.prototype.annualBegin = function (o) {
   var n = this.nPts;
+  // the hourly Perez sky needs a patch set whether or not a bake happened
+  if (!this.patches) this.patches = buildSkyPatches(1);
   return {
     o: o, day: 0, n: n,
+    // `o.df` present => diffuse comes from a daylight factor rather than the
+    // coefficient matrix, which is how the split-flux engine runs the year.
+    // Everything downstream — direct sun, UDI, DA, ASE, sun hours — is shared.
+    useDf: !!o.df,
     udi: new Float32Array(n * 5),
     daHours: new Float32Array(n), aseHours: new Float32Array(n),
     sunHours: new Float32Array(n),
@@ -4461,13 +4624,19 @@ DaylightCore.prototype.annualStep = function (st, nDays) {
         for (var q0 = 0; q0 < n; q0++) udi[q0 * 5] += 1;
         continue;
       }
+      if (!st.useDf && !this.dc) continue;   // nothing baked; nothing to add
       var k = clim.index(md.month, md.day, h);
       var sky = buildSkyVector(P, {
         model: 'perez', sun: sun, dni: clim.dni[k], dhi: clim.dhi[k],
         groundRefl: o.groundRefl, dayOfYear: st.day + 1
       });
 
-      this.diffuse(sky.lum, sky.ground, diff);
+      if (st.useDf) {
+        var df = o.df, Ed = sky.Ediff;
+        for (var q1 = 0; q1 < n; q1++) diff[q1] = df[q1] / 100 * Ed;
+      } else {
+        this.diffuse(sky.lum, sky.ground, diff);
+      }
       if (sky.Enormal > 1) {
         this.directSun(sun.dir, sky.Enormal, o.sunRadius || 0.00465, 1, dir);
         this.sunVisible(sun.dir, 1, vis);
@@ -4591,6 +4760,15 @@ Engine.prototype.setGeometry = function (tri, materials) {
   return Promise.resolve(this.inline.setGeometry(tri, materials));
 };
 
+/** Install the grid without baking — enough for the direct-sun routines. */
+Engine.prototype.setPoints = function (pts, nrm) {
+  if (this.mode === 'worker') {
+    var a = pts.slice(), b = nrm.slice();
+    return this._post({ cmd: 'points', pts: a, nrm: b }, [a.buffer, b.buffer]);
+  }
+  return Promise.resolve(this.inline.setPoints(pts, nrm));
+};
+
 Engine.prototype.bake = function (pts, nrm, cfg, onProgress) {
   var self = this;
   if (this.mode === 'worker') {
@@ -4632,6 +4810,19 @@ Engine.prototype.point = function (o) {
   return Promise.resolve({ lux: out, diffuse: df, direct: dir });
 };
 
+/** Direct beam only — no daylight-coefficient matrix required. */
+Engine.prototype.direct = function (o) {
+  if (this.mode === 'worker') {
+    return this._post({
+      cmd: 'direct', sunDir: o.sunDir, Enormal: o.Enormal,
+      radius: o.radius, samples: o.samples
+    });
+  }
+  return Promise.resolve({
+    lux: this.inline.directSun(o.sunDir, o.Enormal, o.radius, o.samples || 1)
+  });
+};
+
 Engine.prototype.sunVisible = function (sunDir) {
   if (this.mode === 'worker') return this._post({ cmd: 'sunvis', sunDir: sunDir });
   return Promise.resolve({ vis: this.inline.sunVisible(sunDir, 1) });
@@ -4644,6 +4835,7 @@ Engine.prototype.annual = function (o, onProgress) {
     var c = o.climate;
     return this._post({
       cmd: 'annualBegin',
+      df: o.df ? Float32Array.from(o.df) : null,
       dni: c.dni.slice(), dhi: c.dhi.slice(), ghi: c.ghi.slice(), temp: c.temp.slice(),
       climateName: c.name, site: o.site, udi: o.udi, targetLux: o.targetLux,
       occStart: o.occStart, occEnd: o.occEnd, aseLux: o.aseLux,
@@ -4847,38 +5039,134 @@ function legendSubtitle(ctx) {
   return '';
 }
 
+/** Wrap `text` to `maxW` at the current font, returning an array of lines. */
+function wrapText(g, text, maxW) {
+  var words = String(text).split(' '), lines = [], line = '';
+  for (var i = 0; i < words.length; i++) {
+    var trial = line ? line + ' ' + words[i] : words[i];
+    if (g.measureText(trial).width > maxW && line) { lines.push(line); line = words[i]; }
+    else line = trial;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+var LEGEND_MIN_W = 150, LEGEND_MAX_W = 330;
+
 /**
- * Draw the same legend onto a 2D canvas, for the exported image.
- * Kept deliberately close to the DOM version so the export matches the screen.
+ * Draw the legend onto a 2D canvas for the exported image.
+ *
+ * It sizes itself: the box is measured from its own title, subtitle, ticks and
+ * (for UDI) interval rows, so nothing can escape it the way the old fixed
+ * 186 px box did. The unit rides on the top tick exactly as it does in the DOM
+ * legend, instead of being a separate label that collided with the value.
+ *
+ * @returns {object} the rectangle actually used, so the caller can place it
  */
-function drawLegendCanvas(g, x, y, w, h, ctx, ink, panel, line) {
+function drawLegendCanvas(g, x, y, ctx, ink, panel, line, ink2, ink3) {
   var M = METRICS[ctx.metric], scale = ctx.scale;
+  var pad = 12, barW = 18, barGap = 9;
+  var isUdi = ctx.metric === 'udi' && ctx.compliance;
+  var labels = isUdi ? udiLabels(ctx.analysis.udi) : null;
+
+  // ---- measure everything before drawing anything
   g.save();
+  g.font = '600 13px system-ui, sans-serif';
+  var titleW = g.measureText(M.label).width;
+  g.font = '11px ui-monospace, SFMono-Regular, monospace';
+  var subText = legendSubtitle(ctx);
+  var tickTexts = [], steps = 5, i;
+  for (i = 0; i <= steps; i++) {
+    var v = lerp(scale.min, scale.max, 1 - i / steps);
+    tickTexts.push(num(v, M.decimals) + (i === 0 ? ' ' + tickUnit(M) : ''));
+  }
+  var tickW = 0;
+  for (i = 0; i < tickTexts.length; i++) tickW = Math.max(tickW, g.measureText(tickTexts[i]).width);
+
+  var binW = 0;
+  if (isUdi) {
+    g.font = '11px system-ui, sans-serif';
+    for (i = 0; i < 5; i++) {
+      binW = Math.max(binW, 13 + 7 + g.measureText(UDI_BINS[i].label).width + 10 +
+                            g.measureText(ctx.compliance.udiMean[i].toFixed(0) + '%').width);
+    }
+  }
+
+  var subW = g.measureText(subText).width;
+  var contentW = Math.max(titleW, barW + barGap + tickW, binW,
+                          Math.min(subW, LEGEND_MAX_W - pad * 2),
+                          LEGEND_MIN_W - pad * 2);
+  var w = clamp(Math.ceil(contentW + pad * 2), LEGEND_MIN_W, LEGEND_MAX_W);
+  var innerW = w - pad * 2;
+
+  g.font = '11px ui-monospace, SFMono-Regular, monospace';
+  var subLines = wrapText(g, subText, innerW);
+
+  // ---- height from the content
+  var yy = pad + 14;                                   // title baseline
+  yy += 4 + subLines.length * 14;                      // subtitle block
+  var binTop = yy;
+  if (isUdi) yy += 5 * 17 + 8;
+  var barTop = yy + 4;
+  var barH = 150;
+  var h = barTop + barH + pad;
+  if (ctx.metric === 'df') h += 26;                    // the band footnote
+
+  // ---- draw
   g.fillStyle = panel; g.strokeStyle = line; g.lineWidth = 1;
-  roundRect(g, x, y, w, h, 6); g.fill(); g.stroke();
+  roundRect(g, x, y, w, h, 7); g.fill(); g.stroke();
 
   g.fillStyle = ink;
   g.font = '600 13px system-ui, sans-serif';
-  g.fillText(M.label, x + 12, y + 22);
-  g.font = '11px ui-monospace, monospace';
-  g.globalAlpha = 0.65;
-  g.fillText(legendSubtitle(ctx), x + 12, y + 38);
-  g.globalAlpha = 1;
+  g.textAlign = 'left';
+  g.fillText(M.label, x + pad, y + pad + 11);
 
-  var barX = x + 12, barY = y + 50, barW = 18, barH = h - 68;
-  var grd = g.createLinearGradient(0, barY + barH, 0, barY);
-  for (var i = 0; i <= 12; i++) grd.addColorStop(i / 12, rampHex(scale.ramp, scale.reverse ? 1 - i / 12 : i / 12));
-  g.fillStyle = grd; g.fillRect(barX, barY, barW, barH);
-  g.strokeStyle = line; g.strokeRect(barX, barY, barW, barH);
-
-  g.fillStyle = ink; g.font = '11px ui-monospace, monospace';
-  for (i = 0; i <= 5; i++) {
-    var v = lerp(scale.min, scale.max, 1 - i / 5);
-    g.fillText(num(v, M.decimals), barX + barW + 8, barY + barH * i / 5 + 4);
+  g.font = '11px ui-monospace, SFMono-Regular, monospace';
+  g.fillStyle = ink3 || ink2 || ink;
+  for (i = 0; i < subLines.length; i++) {
+    g.fillText(subLines[i], x + pad, y + pad + 27 + i * 14);
   }
-  g.font = '600 11px ui-monospace, monospace';
-  g.fillText(tickUnit(M), barX + barW + 8, barY - 6);
+
+  if (isUdi) {
+    g.font = '11px system-ui, sans-serif';
+    for (i = 4; i >= 0; i--) {
+      var row = y + binTop + (4 - i) * 17 + 10;
+      g.fillStyle = UDI_COLORS[i];
+      roundRect(g, x + pad, row - 9, 13, 13, 3); g.fill();
+      g.strokeStyle = line; g.lineWidth = 1; g.stroke();
+      g.fillStyle = ink2 || ink;
+      g.textAlign = 'left';
+      g.fillText(UDI_BINS[i].label, x + pad + 20, row + 1);
+      g.fillStyle = ink3 || ink;
+      g.textAlign = 'right';
+      g.fillText(ctx.compliance.udiMean[i].toFixed(0) + '%', x + w - pad, row + 1);
+      g.textAlign = 'left';
+    }
+  }
+
+  var barX = x + pad, barY = y + barTop;
+  var grd = g.createLinearGradient(0, barY + barH, 0, barY);
+  for (i = 0; i <= 12; i++) grd.addColorStop(i / 12, rampHex(scale.ramp, scale.reverse ? 1 - i / 12 : i / 12));
+  g.fillStyle = grd; g.fillRect(barX, barY, barW, barH);
+  g.strokeStyle = line; g.lineWidth = 1; g.strokeRect(barX, barY, barW, barH);
+
+  g.fillStyle = ink2 || ink;
+  g.font = '11px ui-monospace, SFMono-Regular, monospace';
+  for (i = 0; i <= steps; i++) {
+    g.fillText(tickTexts[i], barX + barW + barGap, barY + barH * i / steps + 4);
+  }
+
+  if (ctx.metric === 'df') {
+    g.fillStyle = ink3 || ink2 || ink;
+    g.font = '10px system-ui, sans-serif';
+    var foot = wrapText(g, '<1% poor · 1–2% modest · 2–5% good · >5% very high', innerW);
+    for (i = 0; i < Math.min(2, foot.length); i++) {
+      g.fillText(foot[i], x + pad, barY + barH + 14 + i * 12);
+    }
+  }
+
   g.restore();
+  return { x: x, y: y, w: w, h: h };
 }
 
 function roundRect(g, x, y, w, h, r) {
@@ -5118,6 +5406,9 @@ function OrbitCtl(camera, dom, onChange) {
   // aperture dragging); `suspend` stops an in-flight gesture, for the touch
   // press-and-hold that promotes an orbit into a drag.
   this.claim = null; this.suspend = false;
+  // In an orthographic view the camera direction is fixed by the view itself,
+  // so gestures re-route: dragging pans and the wheel changes the extent.
+  this.ortho = false; this.onOrtho = null;
   this.target = new THREE.Vector3(0, 1.2, 0);
   this.dist = 18; this.theta = -0.6; this.phi = 1.05;
   this.minPhi = 0.02; this.maxPhi = Math.PI - 0.02;
@@ -5182,17 +5473,27 @@ OrbitCtl.prototype._bind = function () {
   }, { passive: false });
 };
 OrbitCtl.prototype.orbit = function (dx, dy) {
+  if (this.ortho) { this.pan(dx, dy); return; }   // a locked view pans instead
   this.theta -= dx * 0.007;
   this.phi = clamp(this.phi - dy * 0.007, this.minPhi, this.maxPhi);
 };
-OrbitCtl.prototype.zoom = function (f) { this.dist = clamp(this.dist * f, this.minDist, this.maxDist); };
+OrbitCtl.prototype.zoom = function (f) {
+  if (this.ortho) { if (this.onOrtho) this.onOrtho.zoom(f); return; }
+  this.dist = clamp(this.dist * f, this.minDist, this.maxDist);
+};
 OrbitCtl.prototype.pan = function (dx, dy) {
+  if (this.ortho) { if (this.onOrtho) this.onOrtho.pan(dx, dy); return; }
   var scale = this.dist * 0.0016;
   var right = new THREE.Vector3().setFromMatrixColumn(this.cam.matrix, 0);
   var up = new THREE.Vector3().setFromMatrixColumn(this.cam.matrix, 1);
   this.target.addScaledVector(right, -dx * scale).addScaledVector(up, dy * scale);
 };
 OrbitCtl.prototype.apply = function () {
+  if (this.ortho) {
+    if (this.onOrtho) this.onOrtho.apply();
+    if (this.onChange) this.onChange();
+    return;
+  }
   var sp = Math.sin(this.phi), cp = Math.cos(this.phi);
   this.cam.position.set(
     this.target.x + this.dist * sp * Math.sin(this.theta),
@@ -5267,9 +5568,47 @@ View.prototype.resize = function () {
 };
 View.prototype._orthoFrame = function (aspect) {
   var e = this.orthoExtent || 6;
-  this.ortho.left = -e * aspect; this.ortho.right = e * aspect;
-  this.ortho.top = e; this.ortho.bottom = -e;
+  var px = this.orthoPan ? this.orthoPan.x : 0, py = this.orthoPan ? this.orthoPan.y : 0;
+  this.ortho.left = -e * aspect + px; this.ortho.right = e * aspect + px;
+  this.ortho.top = e + py; this.ortho.bottom = -e + py;
   this.ortho.updateProjectionMatrix();
+};
+
+/**
+ * Zoom and pan handlers for the orthographic views. Zoom scales the visible
+ * extent rather than moving the camera — an orthographic camera sees the same
+ * thing wherever it sits along its axis — and is clamped either side of the
+ * extent the view was fitted at.
+ */
+View.prototype._orthoHandlers = function () {
+  var self = this;
+  return {
+    zoom: function (f) {
+      var base = self.orthoBase || self.orthoExtent || 6;
+      self.orthoExtent = clamp((self.orthoExtent || base) * f, base * 0.15, base * 6);
+      self._orthoFrame(self.camera.aspect || 1);
+      self.dirty = true;
+    },
+    pan: function (dx, dy) {
+      if (!self.orthoPan) self.orthoPan = new THREE.Vector2();
+      // one pixel of drag moves one pixel of scene at the current extent
+      var h = self.canvas.clientHeight || 1;
+      var k = (self.orthoExtent || 6) * 2 / h;
+      self.orthoPan.x -= dx * k;
+      self.orthoPan.y += dy * k;
+      self._orthoFrame(self.camera.aspect || 1);
+      self.dirty = true;
+    },
+    apply: function () { self.dirty = true; }
+  };
+};
+
+/** Reset an orthographic view to the extent and centring it was fitted at. */
+View.prototype.orthoReset = function () {
+  if (this.orthoBase) this.orthoExtent = this.orthoBase;
+  if (this.orthoPan) this.orthoPan.set(0, 0);
+  this._orthoFrame(this.camera.aspect || 1);
+  this.dirty = true;
 };
 
 /** Theme colours come from the CSS custom properties so the two never drift. */
@@ -5694,7 +6033,7 @@ View.prototype.setViewMode = function (mode, opts) {
     this.ortho.near = 40 - (eye - (this.grid ? this.grid.y : 0.75)) + 0.02;
     this.ortho.far = 400;
     this.active = this.ortho;
-    this.ctl.enabled = false;
+    this.ctl.enabled = true; this.ctl.ortho = true;
   } else if (mode === 'elev') {
     this.orthoExtent = Math.max(b.x1 - b.x0, b.y1 - b.y0) * 0.62;
     this.ortho.position.set(cx, (b.y0 + b.y1) / 2, cz + 80);
@@ -5702,10 +6041,16 @@ View.prototype.setViewMode = function (mode, opts) {
     this.ortho.lookAt(cx, (b.y0 + b.y1) / 2, cz);
     this.ortho.near = -200; this.ortho.far = 400;
     this.active = this.ortho;
-    this.ctl.enabled = false;
+    this.ctl.enabled = true; this.ctl.ortho = true;
   } else {
     this.active = this.camera;
-    this.ctl.enabled = true;
+    this.ctl.enabled = true; this.ctl.ortho = false;
+  }
+  if (this.ctl.ortho) {
+    this.orthoBase = this.orthoExtent;      // the fitted extent, for clamping
+    if (!this.orthoPan) this.orthoPan = new THREE.Vector2();
+    this.orthoPan.set(0, 0);
+    this.ctl.onOrtho = this._orthoHandlers();
   }
   this.resize();
   this._orthoFrame(this.camera.aspect || 1);
@@ -6267,7 +6612,16 @@ function exportImage(view, ctx, o) {
   view.renderer.setSize(W, H, false);
   view.render();
 
-  var titleH = o.showTitle === false ? 0 : Math.round(78 * scale);
+  var titleH = 0, titleRows = 3;
+  if (o.showTitle !== false) {
+    // measure the metadata first: the block grows if it needs a fourth row
+    var probeC = document.createElement('canvas').getContext('2d');
+    probeC.font = '650 15px system-ui, sans-serif';
+    var hW = probeC.measureText((METRICS[ctx.metric] || {}).label || '').width;
+    var mx0 = Math.max(210, Math.ceil(16 + hW + 28));
+    titleRows = titleBlockLayout(probeC, ctx.meta || [], Math.max(220, W - mx0 - 210)).rows;
+    titleH = Math.round(titleBlockHeight(titleRows) * scale);
+  }
   var out = document.createElement('canvas');
   out.width = cw; out.height = ch + titleH;
   var g = out.getContext('2d');
@@ -6290,10 +6644,15 @@ function exportImage(view, ctx, o) {
   g.scale(scale, scale);
 
   if (o.showValues && ctx.labels && ctx.labels.length) drawValueLabels(g, ctx.labels, ink, panel);
+  if (o.showDimensions !== false && ctx.dimLabels && ctx.dimLabels.length) {
+    drawDimensionLabels(g, ctx.dimLabels, ink, panel, line);
+  }
   drawNorthArrow(g, W - 52, 52, 26, ctx.northAngle || 0, ink, ink3, panel, line);
 
   if (o.showLegend !== false && ctx.scale) {
-    drawLegendCanvas(g, W - 200, 96, 186, ctx.metric === 'udi' ? 300 : 260, ctx, ink, panel, line);
+    // measured once at x = 0 to learn its width, then placed flush right
+    var probe = drawLegendCanvas(g, -9999, -9999, ctx, ink, panel, line, ink2, ink3);
+    drawLegendCanvas(g, W - 14 - probe.w, 96, ctx, ink, panel, line, ink2, ink3);
   }
   if (o.showStats !== false && ctx.stats) {
     drawStatsCanvas(g, 14, H - 128, 200, 114, ctx, ink, ink2, panel, line);
@@ -6317,6 +6676,27 @@ function drawValueLabels(g, labels, ink, panel) {
     var L = labels[i];
     g.strokeText(L.text, L.x, L.y);
     g.fillText(L.text, L.x, L.y);
+  }
+  g.restore();
+}
+
+/**
+ * Dimension labels, as bordered chips matching the on-screen `.dim` style.
+ * The dimension LINES already survive the export, being 3D geometry — only
+ * their numbers live in the HTML overlay and have to be composited here.
+ */
+function drawDimensionLabels(g, labels, ink, panel, line) {
+  g.save();
+  g.font = '600 10.5px ui-monospace, SFMono-Regular, monospace';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (var i = 0; i < labels.length; i++) {
+    var L = labels[i], w = g.measureText(L.text).width + 10, h = 15;
+    g.fillStyle = panel; g.globalAlpha = 0.92;
+    roundRect(g, L.x - w / 2, L.y - h / 2, w, h, 3); g.fill();
+    g.globalAlpha = 1;
+    g.strokeStyle = line; g.lineWidth = 1; g.stroke();
+    g.fillStyle = ink;
+    g.fillText(L.text, L.x, L.y + 0.5);
   }
   g.restore();
 }
@@ -6369,6 +6749,31 @@ function drawStatsCanvas(g, x, y, w, h, ctx, ink, ink2, panel, line) {
   g.restore();
 }
 
+/**
+ * Metadata layout for the title block: columns are measured from the actual
+ * text rather than assumed, so a long climate name or a wide UDI threshold
+ * string can never overrun the next column's key. (The old fixed
+ * colW = 190 / keyOff = 74 put "Reflectance" on top of "…3.20 m".)
+ */
+function titleBlockLayout(g, meta, availW) {
+  g.save();
+  g.font = '10.5px ui-monospace, SFMono-Regular, monospace';
+  var keyW = 0, valW = 0;
+  for (var i = 0; i < meta.length; i++) {
+    keyW = Math.max(keyW, g.measureText(meta[i][0]).width);
+    valW = Math.max(valW, g.measureText(meta[i][1]).width);
+  }
+  g.restore();
+  var keyOff = Math.ceil(keyW) + 10;
+  var colW = keyOff + Math.ceil(valW) + 26;
+  var cols = Math.max(1, Math.floor(availW / colW));
+  var rows = Math.max(3, Math.ceil(meta.length / cols));
+  return { keyOff: keyOff, colW: colW, cols: cols, rows: rows };
+}
+
+/** Height the title block needs for `rows` metadata rows. */
+function titleBlockHeight(rows) { return Math.max(78, 40 + rows * 15 + 16); }
+
 function drawTitleBlock(g, x, y, w, h, scale, ctx, ink, ink2, ink3, panel, line) {
   g.save();
   g.fillStyle = panel; g.fillRect(x, y, w, h);
@@ -6384,16 +6789,23 @@ function drawTitleBlock(g, x, y, w, h, scale, ctx, ink, ink2, ink3, panel, line)
   g.font = '11.5px system-ui, sans-serif'; g.fillStyle = ink2;
   g.fillText(ctx.model ? ctx.model.name : 'Model', 16, Y + 41);
 
-  // metadata, laid out in two columns
-  var mid = ctx.meta || [];
+  var meta = ctx.meta || [];
+  // Start the metadata after the title, not at a fixed 210 — "Useful Daylight
+  // Illuminance" is wider than that and used to sit on top of the first key.
+  g.font = '650 15px system-ui, sans-serif';
+  var headW = g.measureText(M.label).width;
+  g.font = '11.5px system-ui, sans-serif';
+  headW = Math.max(headW, g.measureText(ctx.model ? ctx.model.name : 'Model').width);
+  var x0 = Math.max(210, Math.ceil(16 + headW + 28)), rightReserve = 210;
+  var lay = titleBlockLayout(g, meta, Math.max(colWMin(), W - x0 - rightReserve));
+
   g.font = '10.5px ui-monospace, SFMono-Regular, monospace';
-  var colW = 190, x0 = 210;
-  for (var i = 0; i < mid.length; i++) {
-    var col = Math.floor(i / 3), row = i % 3;
-    var mx = x0 + col * colW, my = Y + 20 + row * 15;
-    if (mx > W - 210) break;
-    g.fillStyle = ink3; g.fillText(mid[i][0], mx, my);
-    g.fillStyle = ink2; g.fillText(mid[i][1], mx + 74, my);
+  for (var i = 0; i < meta.length; i++) {
+    var col = Math.floor(i / lay.rows), row = i % lay.rows;
+    var mx = x0 + col * lay.colW, my = Y + 20 + row * 15;
+    if (mx + lay.colW - 26 > W - rightReserve + 26) break;
+    g.fillStyle = ink3; g.fillText(meta[i][0], mx, my);
+    g.fillStyle = ink2; g.fillText(meta[i][1], mx + lay.keyOff, my);
   }
 
   // copyright, bottom left — always present in an exported image
@@ -6404,6 +6816,7 @@ function drawTitleBlock(g, x, y, w, h, scale, ctx, ink, ink2, ink3, panel, line)
   g.fillText('Daylight Lab — daylighting teaching tool', W - 16, Y + H - 12);
   g.restore();
 }
+function colWMin() { return 220; }
 
 /** Model + settings as JSON, round-trippable through loadModelJson(). */
 function exportJson(model, extra) {
@@ -7373,7 +7786,7 @@ function panelAnalysis() {
   return panel('analysis', 'Analysis', false, function (b) {
     b.appendChild(row('Engine', ctlSeg([
       { value: 'raytrace', label: 'Raytraced', title: 'Daylight coefficients — sees shading, reveals and interreflection' },
-      { value: 'splitflux', label: 'Split-flux', title: 'BRE hand method — instant, but blind to shading geometry' }
+      { value: 'splitflux', label: 'Split-flux', title: 'BRE method with shading and direct sun — instant, but no reveals and a uniform interreflected component' }
     ], function () { return App.model.analysis.engine; },
        function (v) { App.model.analysis.engine = v; App.markDirty('engine'); }), { wide: true, info: 'engines' }));
 
@@ -7590,9 +8003,14 @@ function panelDisplay() {
       function () { return App.display.showValues; },
       function (v) { App.display.showValues = v; App.markDirty('labels'); UI.sync(); })));
     b.appendChild(el('div', { class: 'grid2' }, [
-      field('Decimals', ctlNumber(function () { return App.display.decimals; },
-        function (v) { App.display.decimals = clamp(Math.round(v), 0, 3); App.markDirty('labels'); },
-        { min: 0, max: 3, step: 1, decimals: 0 })),
+      field('Decimals', ctlSelect(
+        [{ value: 'auto', label: 'Auto' }, { value: '0', label: '0' },
+         { value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }],
+        function () { return App.display.decimals == null ? 'auto' : String(App.display.decimals); },
+        function (v) {
+          App.display.decimals = v === 'auto' ? null : clamp(parseInt(v, 10), 0, 3);
+          App.markDirty('labels');
+        })),
       field('Label every', ctlNumber(function () { return App.display.labelEvery; },
         function (v) { App.display.labelEvery = clamp(Math.round(v), 1, 8); App.markDirty('labels'); },
         { min: 1, max: 8, step: 1, decimals: 0 }))
@@ -7696,9 +8114,10 @@ function panelExport() {
       [{ value: 1, label: '1×' }, { value: 2, label: '2×' }, { value: 3, label: '3×' }, { value: 4, label: '4×' }],
       function () { return App.exportOpts.scale; },
       function (v) { App.exportOpts.scale = +v; }), { wide: true }));
-    ['showTitle', 'showLegend', 'showStats', 'showValues'].forEach(function (k, i) {
+    ['showTitle', 'showLegend', 'showStats', 'showDimensions', 'showValues'].forEach(function (k, i) {
       b.appendChild(rowCheck(
-        ['Include title block', 'Include legend', 'Include statistics', 'Include workplane values'][i],
+        ['Include title block', 'Include legend', 'Include statistics',
+         'Include dimensions', 'Include workplane values'][i],
         ctlCheck(function () { return App.exportOpts[k]; }, function (v) { App.exportOpts[k] = v; })));
     });
     b.appendChild(el('div', { class: 'btn-row' }, [
@@ -7709,7 +8128,6 @@ function panelExport() {
       el('button', { class: 'btn sm', text: 'Model (JSON)', onclick: function () { App.exportModel(); } }),
       el('button', { class: 'btn sm', text: 'Load model…', onclick: function () { $('#file-json').click(); } })
     ]));
-    b.appendChild(hint('Every exported image carries “© Karam Al-Obaidi” in the title block.'));
   });
 }
 
@@ -7855,20 +8273,39 @@ var INFO = {
       'escapes is recorded against the sky patch it left through; a ray that hits a surface reflects diffusely with that ' +
       'surface\'s reflectance and carries on, up to the bounce limit. Glazing is passed through with its transmittance ' +
       'rather than blocking.</p>' +
-      '<p>This sees <b>everything</b>: overhangs, fins, louvre banks, the reveal formed by wall thickness, the well formed by ' +
-      'roof thickness, and true interreflection between surfaces. The result is a matrix, so one bake serves the daylight ' +
-      'factor, any instant, and the full 8760-hour year.</p>' +
+      '<p>The result is a matrix, so one bake serves the daylight factor, any instant, and the full 8760-hour year.</p>' +
       '<h3>Split-flux (BRE)</h3>' +
       '<span class="formula">DF = SC + ERC + IRC<br><br>' +
       'IRC = ( T·W / A(1−ρ) ) · ( C·ρ<sub>fw</sub> + 5(ρ<sub>cw</sub> − ρ<sub>fw</sub>) )</span>' +
-      '<p>The classic hand method. The sky component is integrated over the aperture, the externally reflected component ' +
-      'comes from the obstruction angle, and the internally reflected component from the BRE average formula — a single ' +
-      'number applied uniformly across the room.</p>' +
-      '<h3>The comparison is the lesson</h3><p>On a plain window the two engines agree closely. Now add a 0.6 m overhang and ' +
-      'switch between them: the raytraced result drops, the split-flux result does not move at all. Split-flux has no way to ' +
-      'know the overhang is there. Neither does it know about your reveals, so deepening the walls changes one engine and not ' +
-      'the other.</p>' +
-      '<p>Use split-flux to sanity-check an order of magnitude by hand. Use the raytracer for anything with geometry in it.</p>'
+      '<p>The sky component is integrated over the aperture, the externally reflected component comes from the ' +
+      'obstruction angle, and the internally reflected component from the BRE average formula — a single number applied ' +
+      'uniformly across the room.</p>' +
+      '<h3>What both engines now share</h3><ul>' +
+      '<li><b>Shading devices.</b> Overhangs, louvre banks and fins are tested against the real geometry in both. A ' +
+      'brise-soleil is an obstruction, and the split-flux method has always accounted for obstructions.</li>' +
+      '<li><b>Direct sun.</b> The beam is pure sun geometry, traced identically for both, so <b>ASE and Direct sun ' +
+      'hours are the same number whichever engine is selected</b> — as they should be.</li></ul>' +
+      '<h3>Where they still differ, and why</h3><table>' +
+      '<tr><th>Effect</th><th>Raytraced</th><th>Split-flux</th></tr>' +
+      '<tr><td>Reveal cutting off oblique sky</td><td>yes</td><td><b>no</b></td></tr>' +
+      '<tr><td>Glazing sitting deeper in the reveal</td><td>yes</td><td>yes, weakly</td></tr>' +
+      '<tr><td>Interreflection</td><td>simulated, bounce by bounce</td><td>one uniform value for the room</td></tr>' +
+      '<tr><td>Spatial distribution of bounced light</td><td>varies across the room</td><td>flat</td></tr>' +
+      '<tr><td>Speed</td><td>seconds</td><td>milliseconds</td></tr></table>' +
+      '<p><b>Try this.</b> Put the glazing at the <i>inside</i> face of the wall (Openings → Glass position in reveal), ' +
+      'then take the daylight factor at 0.10 m wall thickness and again at 0.90 m.</p>' +
+      '<p>The raytraced number falls by around 45%: a deep reveal cuts off the oblique sky a point near the back of the ' +
+      'room could otherwise see. The split-flux number does not move <i>at all</i> — the BRE method works from the net ' +
+      'glazed area and has no term for the depth of the opening.</p>' +
+      '<p>Now move the glazing to the outside face and repeat. This time split-flux <i>does</i> move, but only because ' +
+      'the pane itself is further away and subtends a smaller angle — never because of the reveal. That is precisely ' +
+      'what a simplified method cannot see, and it is worth more than the headline number.</p>' +
+      '<h3>One departure from the textbook</h3>' +
+      '<p>The BRE internally reflected component contains no shading term, so on its own it would not respond to an ' +
+      'overhang — and in a deep room, where the IRC dominates the back half, the daylight factor there would look ' +
+      'unmoved. This tool scales the IRC by the same fraction of sky flux the devices remove. That is an extension of ' +
+      'BS 8206-2, not part of it, and it is the reason the split-flux result here will not exactly match a hand ' +
+      'calculation on a shaded window.</p>'
   },
   skies: {
     title: 'Sky models',
@@ -7931,7 +8368,8 @@ var INFO = {
       'the full year and take a few seconds.</li>' +
       '<li><b>Calculate</b> re-bakes the grid. It re-runs on its own whenever the geometry changes.</li>' +
       '<li>Drag in the viewport to orbit, right-drag or shift-drag to pan, scroll to zoom. One finger orbits and two fingers ' +
-      'pan and zoom on a touchscreen.</li>' +
+      'pan and zoom on a touchscreen. In Plan and Elevation the view is locked square-on, so dragging pans instead of ' +
+      'orbiting — use the zoom buttons, the wheel, or <b>+</b> and <b>−</b>, and <b>F</b> to fit.</li>' +
       '<li><b>Drag any window, skylight or door</b> in the viewport to move it. Hold Shift or use the right button to orbit from on top of one, and Ctrl+Z undoes a move.</li>' +
       '<li>Click any <b>dimension label</b> to type a new value. The model rebuilds immediately.</li>' +
       '<li>The two sliders at the bottom scrub time of day and day of year.</li></ul>' +
@@ -8254,7 +8692,7 @@ var App = {
   display: {
     theme: 'light', style: 'smooth', ramp: null, reverseRamp: false,
     manualScale: false, scaleMin: 0, scaleMax: 10,
-    showValues: false, decimals: 1, labelEvery: 1,
+    showValues: false, decimals: null, labelEvery: 1,   // null = the metric's own
     dims: { room: true, thickness: false, aperture: false, shading: false },
     roofOpacity: 1, hideRoof: true, roofRemoved: false,
     showGlass: true, showGround: true, showSunPath: true, shadows: true,
@@ -8262,7 +8700,10 @@ var App = {
     section: { on: false, axis: 'z', pos: 0, flip: false }
   },
   rays: { enabled: false, density: 22, sunSizeDeg: 0.53, length: 2.5, opacity: 0.6, showSpots: true },
-  exportOpts: { scale: 2, showTitle: true, showLegend: true, showStats: true, showValues: false },
+  exportOpts: {
+    scale: 2, showTitle: true, showLegend: true, showStats: true,
+    showValues: false, showDimensions: true
+  },
 
   dirty: {},
   busy: false,
@@ -8447,8 +8888,12 @@ App.gridInfo = function () {
   return { nx: nx, nz: nz, n: nx * nz, x0: x0, z0: z0, spacing: g.spacing, y: g.height };
 };
 
+App.gridVersion = 0;
+App.enginePointsVersion = -1;
+
 App.buildGrid = function () {
   var gi = this.gridInfo();
+  this.gridVersion++;
   var pts = new Float32Array(gi.n * 3), nrm = new Float32Array(gi.n * 3);
   var k = 0;
   for (var j = 0; j < gi.nz; j++) for (var i = 0; i < gi.nx; i++, k++) {
@@ -8571,6 +9016,16 @@ App.run = function () {
     });
   });
 
+  // The direct-sun routines need the sensor grid installed even when nothing
+  // is baked, which is how split-flux gets its beam, ASE and sun hours.
+  chain = chain.then(function () {
+    if (self.enginePointsVersion === self.gridVersion) return null;
+    var v = self.gridVersion;
+    return self.engine.setPoints(self.grid.pts, self.grid.nrm).then(function () {
+      self.enginePointsVersion = v;
+    });
+  });
+
   var engineMode = this.model.analysis.engine;
 
   // The bake decision must be taken AFTER the geometry push above, because
@@ -8635,16 +9090,29 @@ App.computeInstant = function () {
   res.n = this.grid.n; res.pts = this.grid.pts;
 
   if (m.analysis.engine === 'splitflux') {
-    var sf = splitFluxGrid(m, this.grid.pts, this.grid.nrm, 6);
+    var sf = splitFluxGrid(m, this.grid.pts, this.grid.nrm);
     res.df = sf.df; res.sf = sf;
     var sky = this.skyVector();
-    var lux = new Float32Array(res.n);
-    for (var i = 0; i < res.n; i++) lux[i] = sf.df[i] / 100 * sky.Ediff;
-    res.lux = lux;
-    res.sky = sky;
-    this.result = res;
-    d.slice = false;
-    return Promise.resolve();
+    var diffuse = new Float32Array(res.n);
+    for (var i = 0; i < res.n; i++) diffuse[i] = sf.df[i] / 100 * sky.Ediff;
+
+    // The beam is pure sun geometry, so it is traced the same way for both
+    // engines — only the diffuse component differs between them.
+    var beam = (sky.Enormal > 1 && self.sun.dir.y > 0)
+      ? self.engine.direct({
+          sunDir: self.sun.dir, Enormal: sky.Enormal,
+          radius: sunAngularRadius(self.rays.sunSizeDeg), samples: self.live ? 1 : 4
+        })
+      : Promise.resolve({ lux: new Float32Array(res.n) });
+
+    return beam.then(function (b) {
+      var out = new Float32Array(res.n);
+      for (var k = 0; k < res.n; k++) out[k] = diffuse[k] + (b.lux[k] || 0);
+      res.lux = out; res.diffuse = diffuse; res.direct = b.lux;
+      res.sky = sky;
+      self.result = res;
+      d.slice = false;
+    });
   }
 
   // raytraced: one dot product for the daylight factor, one for the instant
@@ -8677,15 +9145,12 @@ App.computeInstant = function () {
 App.computeAnnual = function () {
   var self = this, m = this.model, d = this.dirty;
   if (!d.annual && this.result && this.result.annual) { this.updateCompliance(); return Promise.resolve(); }
-  if (m.analysis.engine === 'splitflux') {
-    this.annualSplitFlux();
-    d.annual = false;
-    this.updateCompliance();
-    return Promise.resolve();
-  }
   this.setStatus('Running the year…', 'busy');
   var t0 = performance.now();
   return this.engine.annual({
+    // split-flux supplies its daylight factor as the diffuse source; the beam,
+    // UDI binning, DA, ASE and sun hours are the shared code path
+    df: m.analysis.engine === 'splitflux' ? this.result.df : null,
     climate: this.climate,
     site: { lat: m.site.lat, lon: m.site.lon, tz: m.site.tz, year: 2001 },
     udi: m.analysis.udi, targetLux: m.analysis.targetLux,
@@ -8698,52 +9163,6 @@ App.computeAnnual = function () {
     d.annual = false;
     self.updateCompliance();
   });
-};
-
-/**
- * Annual metrics under the split-flux engine. DF is fixed, so illuminance at
- * every hour is simply DF x the diffuse horizontal illuminance of that hour.
- * There is no direct beam in the method, which is exactly why ASE and sun
- * hours are unavailable here.
- */
-App.annualSplitFlux = function () {
-  var m = this.model, n = this.grid.n, df = this.result.df;
-  var bins = m.analysis.udi;
-  var udi = new Float32Array(n * 5), daH = new Float32Array(n);
-  var aseH = new Float32Array(n), sunH = new Float32Array(n);
-  var meanLux = new Float32Array(n), maxLux = new Float32Array(n);
-  var sum = new Float64Array(n), hours = 0;
-  var site = { lat: m.site.lat, lon: m.site.lon, tz: m.site.tz };
-  var hs = clamp(Math.floor(m.analysis.occStart), 0, 23);
-  var he = clamp(Math.ceil(m.analysis.occEnd), hs + 1, 24);
-
-  for (var dd = 0; dd < 365; dd++) {
-    var md = fromDoy(dd + 1);
-    for (var h = hs; h < he; h++) {
-      var sun = sunPosition(site, 2001, md.month, md.day, h + 0.5);
-      hours++;
-      var Eh = 0;
-      if (sun.up) {
-        var k = this.climate.index(md.month, md.day, h);
-        var eff = efficacy(sun.altitude, this.climate.dni[k], this.climate.dhi[k]);
-        Eh = this.climate.dhi[k] * eff.diffuse;
-      }
-      for (var i = 0; i < n; i++) {
-        var E = df[i] / 100 * Eh;
-        sum[i] += E;
-        if (E > maxLux[i]) maxLux[i] = E;
-        if (E >= m.analysis.targetLux) daH[i] += 1;
-        var b = E < bins[0] ? 0 : E < bins[1] ? 1 : E < bins[2] ? 2 : E < bins[3] ? 3 : 4;
-        udi[i * 5 + b] += 1;
-      }
-    }
-  }
-  for (i = 0; i < n; i++) meanLux[i] = sum[i] / Math.max(1, hours);
-  this.result.annual = {
-    hours: hours, udi: udi, daHours: daH, aseHours: aseH, sunHours: sunH,
-    meanLux: meanLux, maxLux: maxLux, noDirect: true
-  };
-  this.annualMs = null;
 };
 
 App.updateCompliance = function () {
@@ -9104,7 +9523,8 @@ App.exportImage = function () {
     udiView: this.udiView || 'useful',
     northAngle: this.model.room.northAngle,
     meta: this.exportMeta(),
-    labels: this.exportOpts.showValues ? this.currentValueLabels() : null
+    labels: this.exportOpts.showValues ? this.currentValueLabels() : null,
+    dimLabels: this.exportOpts.showDimensions ? this.currentDimensionLabels() : null
   }, this.exportOpts);
   this.toast('Exported ' + name, 'ok');
 };
@@ -9146,13 +9566,47 @@ App.loadModelFile = function (file) {
 /* --- overlay labels ------------------------------------------------------ */
 
 /** Workplane value labels, in canvas pixels — reused by the PNG export. */
+/** Measure a string at the value-label font, for collision thinning. */
+App._measure = function (text) {
+  var c = this._measureCtx;
+  if (!c) {
+    c = this._measureCtx = document.createElement('canvas').getContext('2d');
+    c.font = '600 9.5px ui-monospace, SFMono-Regular, monospace';
+  }
+  return c.measureText(text).width;
+};
+
 App.currentValueLabels = function () {
   if (!this.field || !this.grid) return [];
-  var g = this.grid, step = Math.max(1, this.display.labelEvery | 0);
-  var dec = this.display.decimals, out = [], p = {};
+  var g = this.grid;
+  // Decimals: fall back to what the metric itself calls for, so illuminance
+  // reads 1,747 rather than 1,747.4 and the labels stay narrow.
+  var dec = this.display.decimals == null
+    ? (METRICS[this.metric] ? METRICS[this.metric].decimals : 1)
+    : this.display.decimals;
+
+  /*
+   * Thin the labels until they stop colliding. A 16-column grid across a plan
+   * view puts the points ~70 px apart, which four-digit lux values overrun —
+   * so measure the widest label, compare it with the actual on-screen pitch,
+   * and skip points until they fit.
+   */
+  var step = Math.max(1, this.display.labelEvery | 0);
+  var a = {}, bx = {}, bz = {};
+  this.view.project(g.x0, g.y, g.z0, a);
+  this.view.project(g.x0 + g.spacing, g.y, g.z0, bx);
+  this.view.project(g.x0, g.y, g.z0 + g.spacing, bz);
+  var pitchX = Math.hypot(bx.x - a.x, bx.y - a.y);
+  var pitchZ = Math.hypot(bz.x - a.x, bz.y - a.y);
+  var st = describe(this.field);
+  var wide = this._measure(num(st.max, dec)) + 7;
+  if (pitchX > 0.5) step = Math.max(step, Math.ceil(wide / pitchX));
+  var stepZ = pitchZ > 0.5 ? Math.max(1, Math.ceil(13 / pitchZ)) : 1;
+
+  var out = [], p = {};
   var y = g.y + 0.02 + (this.display.style === 'relief' ? Math.min(1.5, this.model.room.H * 0.4) : 0);
   var budget = 900;
-  for (var j = 0; j < g.nz; j += step) {
+  for (var j = 0; j < g.nz; j += stepZ) {
     for (var i = 0; i < g.nx; i += step) {
       if (out.length >= budget) return out;
       var v = this.field[j * g.nx + i];
@@ -9163,6 +9617,34 @@ App.currentValueLabels = function () {
       if (!p.visible) continue;
       out.push({ x: p.x, y: p.y, text: num(v, dec) });
     }
+  }
+  return out;
+};
+
+/** Dimension labels in canvas pixels, mirroring currentValueLabels(). */
+/**
+ * Dimension labels in canvas pixels, mirroring currentValueLabels().
+ *
+ * Openings close together project their labels on top of each other, so a
+ * greedy pass drops any label whose box would overlap one already placed.
+ */
+App.currentDimensionLabels = function () {
+  var out = [], p = {};
+  for (var k = 0; k < this.dims.length; k++) {
+    var d = this.dims[k];
+    if (!this.display.dims[d.group]) continue;
+    var gm = dimGeometry(d);
+    this.view.project(gm.mid[0], gm.mid[1], gm.mid[2], p);
+    if (!p.visible) continue;
+    var text = m2(d.value) + (d.unit === 'm' ? '' : d.unit);
+    var w = this._measure(text) + 12, h = 16;
+    var clash = false;
+    for (var q = 0; q < out.length; q++) {
+      if (Math.abs(out[q].x - p.x) < (out[q].w + w) / 2 &&
+          Math.abs(out[q].y - p.y) < h) { clash = true; break; }
+    }
+    if (clash) continue;
+    out.push({ x: p.x, y: p.y, text: text, w: w, dim: d });
   }
   return out;
 };
@@ -9181,22 +9663,19 @@ App.refreshLabels = function () {
   }
 
   var p = {};
-  for (var k = 0; k < this.dims.length; k++) {
-    var d = this.dims[k];
-    if (!this.display.dims[d.group]) continue;
-    var gm = dimGeometry(d);
-    this.view.project(gm.mid[0], gm.mid[1], gm.mid[2], p);
-    if (!p.visible) continue;
-    (function (d) {
+  var dl = this.currentDimensionLabels();
+  for (var k = 0; k < dl.length; k++) {
+    (function (L) {
+      var d = L.dim;
       var node = el('div', {
         class: 'dim',
-        style: 'left:' + p.x.toFixed(1) + 'px;top:' + p.y.toFixed(1) + 'px',
-        text: m2(d.value) + (d.unit === 'm' ? '' : d.unit),
+        style: 'left:' + L.x.toFixed(1) + 'px;top:' + L.y.toFixed(1) + 'px',
+        text: L.text,
         title: d.label + (d.editable ? ' — click to edit' : '')
       });
       if (d.editable) node.addEventListener('click', function (e) { e.stopPropagation(); App.openDimEdit(d, node); });
       frag.appendChild(node);
-    })(d);
+    })(dl[k]);
   }
 
   // sun-path compass letters
@@ -9268,6 +9747,8 @@ var ICONS = {
   plan: '<rect x="3" y="3" width="18" height="18" rx="1.5"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="10" y1="10" x2="10" y2="21"/>',
   elev: '<path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><rect x="9" y="12" width="6" height="5"/>',
   fit: '<polyline points="4 9 4 4 9 4"/><polyline points="20 9 20 4 15 4"/><polyline points="4 15 4 20 9 20"/><polyline points="20 15 20 20 15 20"/>',
+  zoomIn: '<circle cx="11" cy="11" r="7"/><line x1="16.2" y1="16.2" x2="21" y2="21"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>',
+  zoomOut: '<circle cx="11" cy="11" r="7"/><line x1="16.2" y1="16.2" x2="21" y2="21"/><line x1="8" y1="11" x2="14" y2="11"/>',
   roof: '<path d="M2 11 12 3l10 8"/><path d="M5 11v9h14v-9"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   ruler: '<rect x="2" y="8" width="20" height="8" rx="1.5"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/>',
@@ -9292,7 +9773,9 @@ function buildViewTools() {
     function () { App.setViewMode('plan'); }, function () { return App.display.viewMode === 'plan'; }));
   host.appendChild(vtBtn('elev', 'Elevation', function () { App.setViewMode('elev'); }, function () { return App.display.viewMode === 'elev'; }));
   host.appendChild(el('div', { class: 'vt-sep' }));
-  host.appendChild(vtBtn('fit', 'Fit the model in view', function () { App.view.frame(); App.dirty.labels = true; }));
+  host.appendChild(vtBtn('zoomIn', 'Zoom in', function () { App.zoomBy(0.8); }));
+  host.appendChild(vtBtn('zoomOut', 'Zoom out', function () { App.zoomBy(1.25); }));
+  host.appendChild(vtBtn('fit', 'Fit the model in view', function () { App.fitView(); }));
   host.appendChild(vtBtn('compass', 'Cycle standard views', function () { App.cycleView(); }));
   host.appendChild(el('div', { class: 'vt-sep' }));
   host.appendChild(vtBtn('roof', 'Hide the roof (view only — it stays in the calculation)',
@@ -9312,6 +9795,20 @@ function buildViewTools() {
     function () { App.display.showValues = !App.display.showValues; App.markDirty('labels'); UI.sync(); },
     function () { return App.display.showValues; }));
 }
+
+/** Zoom step shared by the toolbar buttons and the keyboard. */
+App.zoomBy = function (f) {
+  this.view.ctl.zoom(f);
+  this.view.ctl.apply();
+  this.dirty.labels = true;
+};
+
+/** Fit: reframes the perspective camera, or resets an orthographic view. */
+App.fitView = function () {
+  if (this.view.ctl.ortho) this.view.orthoReset();
+  else this.view.frame();
+  this.dirty.labels = true;
+};
 
 App._viewCycle = 0;
 App.cycleView = function () {
@@ -9645,7 +10142,9 @@ function wireGlobalEvents() {
     if (k === 'escape') { if (Tour.active) Tour.end(false); closeModal(); App.closeDimEdit(); }
     else if (Tour.active && (k === 'arrowright' || k === 'enter')) { e.preventDefault(); Tour.go(1); }
     else if (Tour.active && k === 'arrowleft') { e.preventDefault(); Tour.go(-1); }
-    else if (k === 'f') { App.view.frame(); App.dirty.labels = true; }
+    else if (k === 'f') App.fitView();
+    else if (k === '+' || k === '=') App.zoomBy(0.8);
+    else if (k === '-' || k === '_') App.zoomBy(1.25);
     else if (k === 'p') App.setViewMode(App.display.viewMode === 'plan' ? '3d' : 'plan');
     else if (k === 'r') { App.rays.enabled = !App.rays.enabled; App.markDirty('rays'); UI.sync(); }
     else if (k === 'd') {

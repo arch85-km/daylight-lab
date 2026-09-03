@@ -8,9 +8,32 @@
    internally reflected component. It runs in milliseconds and a student can
    check it with a calculator.
 
-   It deliberately does NOT see the shading devices, the reveals or the
-   skylight well — that limitation is the point of offering both engines.
+   External shading devices ARE accounted for: each sensor-to-glass direction is
+   tested against a BVH holding only the overhangs, louvres and fins, and a
+   blocked direction is credited to the externally reflected component off the
+   device rather than to sky. A brise-soleil is an obstruction, and the method
+   has always accounted for obstructions.
+
+   Still NOT seen, deliberately: the reveals and the skylight well. Those are
+   wall construction, which BRE handles through the net glazed area, and they
+   remain the honest difference against the raytraced engine — change the wall
+   thickness and one number moves while the other does not.
    ========================================================================== */
+
+/**
+ * Fraction of a shading device's diffuse reflection that heads back into the
+ * room rather than out to the sky. Calibrated against the raytraced engine
+ * across overhangs, louvre banks and fins — see docs/ENGINE-VALIDATION.md.
+ */
+var SHADE_ERC_SHARE = 0.5;
+
+/**
+ * Aperture subdivision. Shading devices put fine structure across the opening
+ * — a five-blade louvre bank on a 1.6 m window has blades every 0.375 m — so
+ * the integration is refined when any device is present. It costs nothing on
+ * an unshaded model, which is the common case.
+ */
+var SF_SUB_PLAIN = 8, SF_SUB_SHADED = 16;
 
 /** BRE coefficient C against obstruction angle, in 10-degree steps. */
 var BRE_C = [39, 35, 31, 25, 20, 14, 10, 7, 5, 5, 5];
@@ -18,6 +41,22 @@ function breC(obstructionDeg) {
   var x = clamp(obstructionDeg, 0, 90) / 10;
   var i = Math.min(Math.floor(x), 9);
   return lerp(BRE_C[i], BRE_C[i + 1], x - i);
+}
+
+/**
+ * A BVH holding nothing but the external shading devices.
+ *
+ * `buildShading()` already emits every overhang, louvre blade and fin as a
+ * solid, so this is the same geometry the renderer and the raytracer use — no
+ * second description of the devices to drift out of step. With no device
+ * enabled the soup is empty and `BVH.occluded()` returns immediately on its
+ * `triCount` guard, so an unshaded model costs nothing.
+ */
+function shadingBvh(model) {
+  var mb = new MeshBuilder();
+  buildShading(mb, model);
+  var tri = mb.finish();
+  return new BVH(tri.pos, tri.mat);
 }
 
 /** CIE overcast relative luminance for a direction of altitude `altRad`. */
@@ -28,10 +67,14 @@ function overcastRel(altRad) { return (1 + 2 * Math.sin(Math.max(0, altRad))) / 
  * integration over every aperture. Returns percentages of the unobstructed
  * horizontal illuminance.
  */
-function skyComponents(model, px, py, pz, nx, ny, nz, sub) {
+function skyComponents(model, px, py, pz, nx, ny, nz, sub, shadeBvh) {
   var R = model.room, aps = model.apertures || [];
   var obstruction = (model.site.obstructionAngle || 0) * DEG;
   var groundRefl = R.refl.ground == null ? 0.2 : R.refl.ground;
+  var shadeRefl = R.refl.shade == null ? 0.35 : R.refl.shade;
+  var hasShade = shadeBvh && shadeBvh.triCount > 0;
+  var scOpen = 0;                     // sky component ignoring the devices,
+                                      // kept so the IRC can be scaled by them
   var N = sub || 6;
   // Unobstructed horizontal illuminance under the same relative sky:
   //   Eh = integral of L cos(theta) dw = (7*pi/9) * Lz, with Lz = 1
@@ -72,11 +115,27 @@ function skyComponents(model, px, py, pz, nx, ny, nz, sub) {
       var alt = Math.asin(clamp(dy, -1, 1));
       var contrib = overcastRel(alt) * cosP * dOmega * tau;
 
-      if (alt > obstruction) sc += contrib;
-      else erc += contrib * groundRefl;      // obstruction seen instead of sky
+      if (alt <= obstruction) {
+        erc += contrib * groundRefl;         // obstruction seen instead of sky
+        continue;
+      }
+      scOpen += contrib;
+      // is one of the building's own shading devices in the way?
+      if (hasShade && shadeBvh.occluded(px + dx * 1e-4, py + dy * 1e-4, pz + dz * 1e-4,
+                                        dx, dy, dz, 1e5, -1)) {
+        // Light bounced off the device. Only about half of what a blade
+        // scatters heads inward — the rest goes back to the sky — so the
+        // reflectance is halved. Crediting the full reflectance, as the
+        // method does for a ground obstruction, put a louvre bank 83% above
+        // the raytraced answer; halving it brings that to 19%. See
+        // docs/ENGINE-VALIDATION.md §3.
+        erc += contrib * shadeRefl * SHADE_ERC_SHARE;
+      } else {
+        sc += contrib;
+      }
     }
   }
-  return { sc: 100 * sc / Eh, erc: 100 * erc / Eh };
+  return { sc: 100 * sc / Eh, erc: 100 * erc / Eh, scOpen: 100 * scOpen / Eh };
 }
 
 /**
@@ -123,14 +182,35 @@ function internallyReflected(model) {
 function splitFluxGrid(model, pts, nrm, sub) {
   var n = (pts.length / 3) | 0;
   var df = new Float32Array(n), scA = new Float32Array(n), ercA = new Float32Array(n);
+  var shade = shadingBvh(model);
   var irc = internallyReflected(model);
+  sub = sub || (shade.triCount ? SF_SUB_SHADED : SF_SUB_PLAIN);
+
+  // First pass: sky and externally reflected components at every point, and
+  // the totals needed to work out how much flux the shading removes.
+  var sumOpen = 0, sumShaded = 0;
   for (var p = 0; p < n; p++) {
     var c = skyComponents(model, pts[p * 3], pts[p * 3 + 1], pts[p * 3 + 2],
-                          nrm[p * 3], nrm[p * 3 + 1], nrm[p * 3 + 2], sub);
+                          nrm[p * 3], nrm[p * 3 + 1], nrm[p * 3 + 2], sub, shade);
     scA[p] = c.sc; ercA[p] = c.erc;
-    df[p] = c.sc + c.erc + irc;
+    sumOpen += c.scOpen; sumShaded += c.sc;
   }
-  return { df: df, sc: scA, erc: ercA, irc: irc };
+
+  /*
+   * The BRE internally reflected component is built from T*W and has no
+   * shading term, so on its own it would not respond to an overhang at all —
+   * and in a deep room, where the IRC dominates the back half, the daylight
+   * factor there would look completely unmoved. Scale it by the same fraction
+   * of sky flux the devices remove.
+   *
+   * This is an extension of BS 8206-2, not part of it; the Engine information
+   * panel says so.
+   */
+  var shadeFactor = sumOpen > 1e-9 ? clamp(sumShaded / sumOpen, 0, 1) : 1;
+  irc *= shadeFactor;
+
+  for (p = 0; p < n; p++) df[p] = scA[p] + ercA[p] + irc;
+  return { df: df, sc: scA, erc: ercA, irc: irc, shadeFactor: shadeFactor };
 }
 
 /**

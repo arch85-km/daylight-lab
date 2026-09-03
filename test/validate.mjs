@@ -156,9 +156,66 @@ const engines = await page.evaluate(async () => {
 const agree = Math.abs(engines.plainRt - engines.plainSf) / engines.plainRt;
 ok('two engines agree on an unshaded window (within 30%)', agree < 0.30,
   `raytraced ${engines.plainRt.toFixed(2)}% vs split-flux ${engines.plainSf.toFixed(2)}% (${(agree * 100).toFixed(0)}% apart)`);
-ok('raytraced engine sees the overhang, split-flux does not',
-  engines.shadedRt < engines.plainRt * 0.92 && Math.abs(engines.shadedSf - engines.plainSf) < 0.01,
-  `raytraced ${engines.plainRt.toFixed(2)}→${engines.shadedRt.toFixed(2)}%, split-flux ${engines.plainSf.toFixed(2)}→${engines.shadedSf.toFixed(2)}%`);
+const dropRt = 1 - engines.shadedRt / engines.plainRt;
+const dropSf = 1 - engines.shadedSf / engines.plainSf;
+ok('BOTH engines now see the overhang',
+  dropRt > 0.08 && dropSf > 0.08,
+  `raytraced ${engines.plainRt.toFixed(2)}→${engines.shadedRt.toFixed(2)}% (−${(dropRt * 100).toFixed(0)}%), ` +
+  `split-flux ${engines.plainSf.toFixed(2)}→${engines.shadedSf.toFixed(2)}% (−${(dropSf * 100).toFixed(0)}%)`);
+ok('their responses to shading are of the same order',
+  dropSf > dropRt * 0.4 && dropSf < dropRt * 2.5,
+  `ratio ${(dropSf / dropRt).toFixed(2)}`);
+
+const sfGeom = await page.evaluate(() => {
+  const grid = App.grid;
+  const mean = (a) => { let s = 0; for (const v of a) s += v; return s / a.length; };
+  const sf = (mutate) => {
+    const m = defaultModel(); mutate(m);
+    return mean(splitFluxGrid(m, grid.pts, grid.nrm, 6).df);
+  };
+  const south = (m) => makeAperture({ name: 'S', side: 'S', w: 5, h: 1.8, sill: 0.8 });
+  return {
+    depths: [0, 0.4, 0.8, 1.6].map((d) => sf((m) => {
+      const w = south(m);
+      if (d > 0) w.shading.h = { on: true, depth: d, thickness: 0.06, offset: 0.1, extend: 0.4, count: 1, tilt: 0 };
+      m.apertures = [w];
+    })),
+    louvre: sf((m) => {
+      const w = south(m);
+      w.shading.h = { on: true, depth: 0.35, thickness: 0.04, offset: 0.1, extend: 0.2, count: 5, tilt: 15 };
+      m.apertures = [w];
+    }),
+    fins: sf((m) => {
+      const w = makeAperture({ name: 'E', side: 'E', w: 4, h: 1.8, sill: 0.8 });
+      w.shading.v = { on: true, depth: 0.5, thickness: 0.05, offset: 0.05, extend: 0.1, count: 6, tilt: 25, side: 'both' };
+      m.apertures = [w];
+    }),
+    finsBase: sf((m) => { m.apertures = [makeAperture({ name: 'E', side: 'E', w: 4, h: 1.8, sill: 0.8 })]; }),
+    // With the glass at the INNER face, split-flux must be exactly insensitive
+    // to wall thickness: it has no term for the reveal cutting off oblique sky,
+    // and the glazing plane is no longer moving. That is the sharp boundary.
+    thin: sf((m) => { m.room.tWall = 0.10; m.apertures = [makeAperture({ name: 'S', side: 'S', w: 5, h: 1.8, sill: 0.8, glassPos: 0 })]; }),
+    thick: sf((m) => { m.room.tWall = 0.90; m.apertures = [makeAperture({ name: 'S', side: 'S', w: 5, h: 1.8, sill: 0.8, glassPos: 0 })]; }),
+    unshadedFactor: (() => {
+      const m = defaultModel();
+      return splitFluxGrid(m, grid.pts, grid.nrm, 6).shadeFactor;
+    })()
+  };
+});
+ok('split-flux DF falls monotonically with overhang depth',
+  sfGeom.depths.every((v, i) => i === 0 || v < sfGeom.depths[i - 1]),
+  sfGeom.depths.map((v) => v.toFixed(2)).join(' → '));
+ok('split-flux reads a louvre bank and a fin array, not just one overhang',
+  sfGeom.louvre < sfGeom.depths[0] * 0.85 && sfGeom.fins < sfGeom.finsBase * 0.85,
+  `louvres ${sfGeom.depths[0].toFixed(2)}→${sfGeom.louvre.toFixed(2)}%, fins ${sfGeom.finsBase.toFixed(2)}→${sfGeom.fins.toFixed(2)}%`);
+ok('an unshaded model leaves split-flux untouched (shadeFactor exactly 1)',
+  sfGeom.unshadedFactor === 1, 'shadeFactor = ' + sfGeom.unshadedFactor);
+ok('split-flux cannot see the reveal cut off oblique sky (glass at inner face)',
+  Math.abs(sfGeom.thick - sfGeom.thin) < 1e-6,
+  `0.10 m ${sfGeom.thin.toFixed(3)}% vs 0.90 m ${sfGeom.thick.toFixed(3)}% — identical`);
+ok('…while the raytracer drops sharply on the same change',
+  mono.thickness[0] > mono.thickness[2] * 1.3,
+  mono.thickness.map((v) => v.toFixed(2)).join(' → '));
 
 /* ---------------- annual metrics ---------------- */
 console.log('\n-- annual metrics --');
@@ -191,6 +248,87 @@ ok('bake within budget', ann.bakeMs < 12000, `bake ${ann.bakeMs} ms, annual ${an
 notes.push(`  TIMING  bake ${ann.bakeMs} ms · annual ${ann.annualMs} ms · ${ann.n} grid points`);
 
 /* ---------------- roof-closed reading ---------------- */
+console.log('\n-- split-flux direct sun --');
+
+const bothEngines = async (metric) => {
+  const out = {};
+  for (const eng of ['raytrace', 'splitflux']) {
+    await page.evaluate(async ([e, mk]) => {
+      App.model.analysis.engine = e; App.markDirty('engine');
+      App.setMetric(mk); App.dirty.annual = true; App.schedule(0);
+      await App.whenIdle();
+    }, [eng, metric]);
+    out[eng] = await page.evaluate(() => ({
+      mean: App.stats ? App.stats.mean : null,
+      ase: App.compliance ? App.compliance.ase : null
+    }));
+  }
+  return out;
+};
+
+const sunH = await bothEngines('sunhours');
+ok('split-flux reports non-zero direct sun hours', sunH.splitflux.mean > 1,
+  sunH.splitflux.mean.toFixed(1) + ' h');
+ok('sun hours agree across engines (pure sun geometry)',
+  Math.abs(sunH.raytrace.mean - sunH.splitflux.mean) < Math.max(1, sunH.raytrace.mean * 0.02),
+  `raytraced ${sunH.raytrace.mean.toFixed(1)} h vs split-flux ${sunH.splitflux.mean.toFixed(1)} h`);
+
+const aseM = await bothEngines('ase');
+ok('split-flux reports non-zero ASE', aseM.splitflux.mean > 1, aseM.splitflux.mean.toFixed(1) + ' h');
+ok('ASE agrees across engines', Math.abs(aseM.raytrace.ase - aseM.splitflux.ase) < 2,
+  `raytraced ${aseM.raytrace.ase.toFixed(0)}% vs split-flux ${aseM.splitflux.ase.toFixed(0)}% of area`);
+
+const sfBeam = await page.evaluate(async () => {
+  App.model.analysis.engine = 'splitflux';
+  App.model.analysis.skyModel = 'perez';
+  App.setMetric('illuminance');
+  App.model.apertures = [makeAperture({ name: 'S', side: 'S', w: 5, h: 1.8, sill: 0.8 })];
+  App.setDate(6, 21); App.model.when.hour = 12; App.updateSun();
+  App.markDirty('geometry'); await App.whenIdle();
+  const noon = App.stats.mean;
+  const beam = App.result.direct ? App.result.direct.reduce((a, c) => a + c, 0) : 0;
+  const lit = App.result.direct ? App.result.direct.filter((v) => v > 1).length : 0;
+  App.model.when.hour = 5; App.updateSun(); await App.whenIdle();
+  const dawn = App.stats.mean;
+  App.model.when.hour = 12; App.updateSun();
+  App.model.apertures[0].shading.h =
+    { on: true, depth: 1.2, thickness: 0.08, offset: 0.1, extend: 0.4, count: 1, tilt: 0 };
+  App.markDirty('geometry'); await App.whenIdle();
+  const shaded = App.stats.mean;
+  App.resetModel(); App.model.analysis.engine = 'raytrace'; App.markDirty('geometry');
+  await App.whenIdle();
+  return { noon, dawn, shaded, beam, lit };
+});
+ok('split-flux illuminance carries a real direct beam',
+  sfBeam.beam > 0 && sfBeam.lit > 0, `${sfBeam.lit} points sunlit at June noon`);
+ok('split-flux illuminance falls when shading is added', sfBeam.shaded < sfBeam.noon * 0.8,
+  `${sfBeam.noon.toFixed(0)} lx unshaded → ${sfBeam.shaded.toFixed(0)} lx with a 1.2 m overhang`);
+ok('split-flux illuminance tracks the sun through the day', sfBeam.dawn < sfBeam.noon * 0.4,
+  `05:00 ${sfBeam.dawn.toFixed(0)} lx vs 12:00 ${sfBeam.noon.toFixed(0)} lx`);
+
+const sealed = await page.evaluate(() => {
+  // A room with no openings must read exactly zero. Anything else is a light
+  // leak through the geometry or a ray-origin epsilon problem.
+  const m = defaultModel();
+  m.apertures = [];
+  const b = buildModel(m, {});
+  const core = new DaylightCore();
+  core.setGeometry(b.tri, b.materials);
+  core.beginBake(App.grid.pts, App.grid.nrm, { rays: 512, bounces: 4, mf: 1 });
+  core.bakeChunk(0, App.grid.n);
+  const P = buildSkyPatches(1);
+  const sky = buildSkyVector(P, { model: 'overcast', designLux: 10000, groundRefl: 0.2 });
+  const E = core.diffuse(sky.lum, sky.ground);
+  let max = 0; for (let i = 0; i < E.length; i++) max = Math.max(max, E[i]);
+  const sf = splitFluxGrid(m, App.grid.pts, App.grid.nrm, 6);
+  let sfMax = 0; for (let i = 0; i < sf.df.length; i++) sfMax = Math.max(sfMax, sf.df[i]);
+  return { rtMax: max, sfMax: sfMax };
+});
+ok('SEALED BOX: raytracer leaks no light into a room with no openings',
+  sealed.rtMax === 0, 'max ' + sealed.rtMax.toExponential(2) + ' lx');
+ok('SEALED BOX: split-flux likewise reads zero', sealed.sfMax === 0,
+  'max ' + sealed.sfMax.toExponential(2) + '%');
+
 console.log('\n-- enclosed-room reading --');
 const roof = await page.evaluate(async () => {
   App.setMetric('df');

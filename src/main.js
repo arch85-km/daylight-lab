@@ -26,7 +26,7 @@ var App = {
   display: {
     theme: 'light', style: 'smooth', ramp: null, reverseRamp: false,
     manualScale: false, scaleMin: 0, scaleMax: 10,
-    showValues: false, decimals: 1, labelEvery: 1,
+    showValues: false, decimals: null, labelEvery: 1,   // null = the metric's own
     dims: { room: true, thickness: false, aperture: false, shading: false },
     roofOpacity: 1, hideRoof: true, roofRemoved: false,
     showGlass: true, showGround: true, showSunPath: true, shadows: true,
@@ -34,7 +34,10 @@ var App = {
     section: { on: false, axis: 'z', pos: 0, flip: false }
   },
   rays: { enabled: false, density: 22, sunSizeDeg: 0.53, length: 2.5, opacity: 0.6, showSpots: true },
-  exportOpts: { scale: 2, showTitle: true, showLegend: true, showStats: true, showValues: false },
+  exportOpts: {
+    scale: 2, showTitle: true, showLegend: true, showStats: true,
+    showValues: false, showDimensions: true
+  },
 
   dirty: {},
   busy: false,
@@ -219,8 +222,12 @@ App.gridInfo = function () {
   return { nx: nx, nz: nz, n: nx * nz, x0: x0, z0: z0, spacing: g.spacing, y: g.height };
 };
 
+App.gridVersion = 0;
+App.enginePointsVersion = -1;
+
 App.buildGrid = function () {
   var gi = this.gridInfo();
+  this.gridVersion++;
   var pts = new Float32Array(gi.n * 3), nrm = new Float32Array(gi.n * 3);
   var k = 0;
   for (var j = 0; j < gi.nz; j++) for (var i = 0; i < gi.nx; i++, k++) {
@@ -343,6 +350,16 @@ App.run = function () {
     });
   });
 
+  // The direct-sun routines need the sensor grid installed even when nothing
+  // is baked, which is how split-flux gets its beam, ASE and sun hours.
+  chain = chain.then(function () {
+    if (self.enginePointsVersion === self.gridVersion) return null;
+    var v = self.gridVersion;
+    return self.engine.setPoints(self.grid.pts, self.grid.nrm).then(function () {
+      self.enginePointsVersion = v;
+    });
+  });
+
   var engineMode = this.model.analysis.engine;
 
   // The bake decision must be taken AFTER the geometry push above, because
@@ -407,16 +424,29 @@ App.computeInstant = function () {
   res.n = this.grid.n; res.pts = this.grid.pts;
 
   if (m.analysis.engine === 'splitflux') {
-    var sf = splitFluxGrid(m, this.grid.pts, this.grid.nrm, 6);
+    var sf = splitFluxGrid(m, this.grid.pts, this.grid.nrm);
     res.df = sf.df; res.sf = sf;
     var sky = this.skyVector();
-    var lux = new Float32Array(res.n);
-    for (var i = 0; i < res.n; i++) lux[i] = sf.df[i] / 100 * sky.Ediff;
-    res.lux = lux;
-    res.sky = sky;
-    this.result = res;
-    d.slice = false;
-    return Promise.resolve();
+    var diffuse = new Float32Array(res.n);
+    for (var i = 0; i < res.n; i++) diffuse[i] = sf.df[i] / 100 * sky.Ediff;
+
+    // The beam is pure sun geometry, so it is traced the same way for both
+    // engines — only the diffuse component differs between them.
+    var beam = (sky.Enormal > 1 && self.sun.dir.y > 0)
+      ? self.engine.direct({
+          sunDir: self.sun.dir, Enormal: sky.Enormal,
+          radius: sunAngularRadius(self.rays.sunSizeDeg), samples: self.live ? 1 : 4
+        })
+      : Promise.resolve({ lux: new Float32Array(res.n) });
+
+    return beam.then(function (b) {
+      var out = new Float32Array(res.n);
+      for (var k = 0; k < res.n; k++) out[k] = diffuse[k] + (b.lux[k] || 0);
+      res.lux = out; res.diffuse = diffuse; res.direct = b.lux;
+      res.sky = sky;
+      self.result = res;
+      d.slice = false;
+    });
   }
 
   // raytraced: one dot product for the daylight factor, one for the instant
@@ -449,15 +479,12 @@ App.computeInstant = function () {
 App.computeAnnual = function () {
   var self = this, m = this.model, d = this.dirty;
   if (!d.annual && this.result && this.result.annual) { this.updateCompliance(); return Promise.resolve(); }
-  if (m.analysis.engine === 'splitflux') {
-    this.annualSplitFlux();
-    d.annual = false;
-    this.updateCompliance();
-    return Promise.resolve();
-  }
   this.setStatus('Running the year…', 'busy');
   var t0 = performance.now();
   return this.engine.annual({
+    // split-flux supplies its daylight factor as the diffuse source; the beam,
+    // UDI binning, DA, ASE and sun hours are the shared code path
+    df: m.analysis.engine === 'splitflux' ? this.result.df : null,
     climate: this.climate,
     site: { lat: m.site.lat, lon: m.site.lon, tz: m.site.tz, year: 2001 },
     udi: m.analysis.udi, targetLux: m.analysis.targetLux,
@@ -470,52 +497,6 @@ App.computeAnnual = function () {
     d.annual = false;
     self.updateCompliance();
   });
-};
-
-/**
- * Annual metrics under the split-flux engine. DF is fixed, so illuminance at
- * every hour is simply DF x the diffuse horizontal illuminance of that hour.
- * There is no direct beam in the method, which is exactly why ASE and sun
- * hours are unavailable here.
- */
-App.annualSplitFlux = function () {
-  var m = this.model, n = this.grid.n, df = this.result.df;
-  var bins = m.analysis.udi;
-  var udi = new Float32Array(n * 5), daH = new Float32Array(n);
-  var aseH = new Float32Array(n), sunH = new Float32Array(n);
-  var meanLux = new Float32Array(n), maxLux = new Float32Array(n);
-  var sum = new Float64Array(n), hours = 0;
-  var site = { lat: m.site.lat, lon: m.site.lon, tz: m.site.tz };
-  var hs = clamp(Math.floor(m.analysis.occStart), 0, 23);
-  var he = clamp(Math.ceil(m.analysis.occEnd), hs + 1, 24);
-
-  for (var dd = 0; dd < 365; dd++) {
-    var md = fromDoy(dd + 1);
-    for (var h = hs; h < he; h++) {
-      var sun = sunPosition(site, 2001, md.month, md.day, h + 0.5);
-      hours++;
-      var Eh = 0;
-      if (sun.up) {
-        var k = this.climate.index(md.month, md.day, h);
-        var eff = efficacy(sun.altitude, this.climate.dni[k], this.climate.dhi[k]);
-        Eh = this.climate.dhi[k] * eff.diffuse;
-      }
-      for (var i = 0; i < n; i++) {
-        var E = df[i] / 100 * Eh;
-        sum[i] += E;
-        if (E > maxLux[i]) maxLux[i] = E;
-        if (E >= m.analysis.targetLux) daH[i] += 1;
-        var b = E < bins[0] ? 0 : E < bins[1] ? 1 : E < bins[2] ? 2 : E < bins[3] ? 3 : 4;
-        udi[i * 5 + b] += 1;
-      }
-    }
-  }
-  for (i = 0; i < n; i++) meanLux[i] = sum[i] / Math.max(1, hours);
-  this.result.annual = {
-    hours: hours, udi: udi, daHours: daH, aseHours: aseH, sunHours: sunH,
-    meanLux: meanLux, maxLux: maxLux, noDirect: true
-  };
-  this.annualMs = null;
 };
 
 App.updateCompliance = function () {
@@ -876,7 +857,8 @@ App.exportImage = function () {
     udiView: this.udiView || 'useful',
     northAngle: this.model.room.northAngle,
     meta: this.exportMeta(),
-    labels: this.exportOpts.showValues ? this.currentValueLabels() : null
+    labels: this.exportOpts.showValues ? this.currentValueLabels() : null,
+    dimLabels: this.exportOpts.showDimensions ? this.currentDimensionLabels() : null
   }, this.exportOpts);
   this.toast('Exported ' + name, 'ok');
 };
@@ -918,13 +900,47 @@ App.loadModelFile = function (file) {
 /* --- overlay labels ------------------------------------------------------ */
 
 /** Workplane value labels, in canvas pixels — reused by the PNG export. */
+/** Measure a string at the value-label font, for collision thinning. */
+App._measure = function (text) {
+  var c = this._measureCtx;
+  if (!c) {
+    c = this._measureCtx = document.createElement('canvas').getContext('2d');
+    c.font = '600 9.5px ui-monospace, SFMono-Regular, monospace';
+  }
+  return c.measureText(text).width;
+};
+
 App.currentValueLabels = function () {
   if (!this.field || !this.grid) return [];
-  var g = this.grid, step = Math.max(1, this.display.labelEvery | 0);
-  var dec = this.display.decimals, out = [], p = {};
+  var g = this.grid;
+  // Decimals: fall back to what the metric itself calls for, so illuminance
+  // reads 1,747 rather than 1,747.4 and the labels stay narrow.
+  var dec = this.display.decimals == null
+    ? (METRICS[this.metric] ? METRICS[this.metric].decimals : 1)
+    : this.display.decimals;
+
+  /*
+   * Thin the labels until they stop colliding. A 16-column grid across a plan
+   * view puts the points ~70 px apart, which four-digit lux values overrun —
+   * so measure the widest label, compare it with the actual on-screen pitch,
+   * and skip points until they fit.
+   */
+  var step = Math.max(1, this.display.labelEvery | 0);
+  var a = {}, bx = {}, bz = {};
+  this.view.project(g.x0, g.y, g.z0, a);
+  this.view.project(g.x0 + g.spacing, g.y, g.z0, bx);
+  this.view.project(g.x0, g.y, g.z0 + g.spacing, bz);
+  var pitchX = Math.hypot(bx.x - a.x, bx.y - a.y);
+  var pitchZ = Math.hypot(bz.x - a.x, bz.y - a.y);
+  var st = describe(this.field);
+  var wide = this._measure(num(st.max, dec)) + 7;
+  if (pitchX > 0.5) step = Math.max(step, Math.ceil(wide / pitchX));
+  var stepZ = pitchZ > 0.5 ? Math.max(1, Math.ceil(13 / pitchZ)) : 1;
+
+  var out = [], p = {};
   var y = g.y + 0.02 + (this.display.style === 'relief' ? Math.min(1.5, this.model.room.H * 0.4) : 0);
   var budget = 900;
-  for (var j = 0; j < g.nz; j += step) {
+  for (var j = 0; j < g.nz; j += stepZ) {
     for (var i = 0; i < g.nx; i += step) {
       if (out.length >= budget) return out;
       var v = this.field[j * g.nx + i];
@@ -935,6 +951,34 @@ App.currentValueLabels = function () {
       if (!p.visible) continue;
       out.push({ x: p.x, y: p.y, text: num(v, dec) });
     }
+  }
+  return out;
+};
+
+/** Dimension labels in canvas pixels, mirroring currentValueLabels(). */
+/**
+ * Dimension labels in canvas pixels, mirroring currentValueLabels().
+ *
+ * Openings close together project their labels on top of each other, so a
+ * greedy pass drops any label whose box would overlap one already placed.
+ */
+App.currentDimensionLabels = function () {
+  var out = [], p = {};
+  for (var k = 0; k < this.dims.length; k++) {
+    var d = this.dims[k];
+    if (!this.display.dims[d.group]) continue;
+    var gm = dimGeometry(d);
+    this.view.project(gm.mid[0], gm.mid[1], gm.mid[2], p);
+    if (!p.visible) continue;
+    var text = m2(d.value) + (d.unit === 'm' ? '' : d.unit);
+    var w = this._measure(text) + 12, h = 16;
+    var clash = false;
+    for (var q = 0; q < out.length; q++) {
+      if (Math.abs(out[q].x - p.x) < (out[q].w + w) / 2 &&
+          Math.abs(out[q].y - p.y) < h) { clash = true; break; }
+    }
+    if (clash) continue;
+    out.push({ x: p.x, y: p.y, text: text, w: w, dim: d });
   }
   return out;
 };
@@ -953,22 +997,19 @@ App.refreshLabels = function () {
   }
 
   var p = {};
-  for (var k = 0; k < this.dims.length; k++) {
-    var d = this.dims[k];
-    if (!this.display.dims[d.group]) continue;
-    var gm = dimGeometry(d);
-    this.view.project(gm.mid[0], gm.mid[1], gm.mid[2], p);
-    if (!p.visible) continue;
-    (function (d) {
+  var dl = this.currentDimensionLabels();
+  for (var k = 0; k < dl.length; k++) {
+    (function (L) {
+      var d = L.dim;
       var node = el('div', {
         class: 'dim',
-        style: 'left:' + p.x.toFixed(1) + 'px;top:' + p.y.toFixed(1) + 'px',
-        text: m2(d.value) + (d.unit === 'm' ? '' : d.unit),
+        style: 'left:' + L.x.toFixed(1) + 'px;top:' + L.y.toFixed(1) + 'px',
+        text: L.text,
         title: d.label + (d.editable ? ' — click to edit' : '')
       });
       if (d.editable) node.addEventListener('click', function (e) { e.stopPropagation(); App.openDimEdit(d, node); });
       frag.appendChild(node);
-    })(d);
+    })(dl[k]);
   }
 
   // sun-path compass letters
@@ -1040,6 +1081,8 @@ var ICONS = {
   plan: '<rect x="3" y="3" width="18" height="18" rx="1.5"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="10" y1="10" x2="10" y2="21"/>',
   elev: '<path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><rect x="9" y="12" width="6" height="5"/>',
   fit: '<polyline points="4 9 4 4 9 4"/><polyline points="20 9 20 4 15 4"/><polyline points="4 15 4 20 9 20"/><polyline points="20 15 20 20 15 20"/>',
+  zoomIn: '<circle cx="11" cy="11" r="7"/><line x1="16.2" y1="16.2" x2="21" y2="21"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>',
+  zoomOut: '<circle cx="11" cy="11" r="7"/><line x1="16.2" y1="16.2" x2="21" y2="21"/><line x1="8" y1="11" x2="14" y2="11"/>',
   roof: '<path d="M2 11 12 3l10 8"/><path d="M5 11v9h14v-9"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   ruler: '<rect x="2" y="8" width="20" height="8" rx="1.5"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/>',
@@ -1064,7 +1107,9 @@ function buildViewTools() {
     function () { App.setViewMode('plan'); }, function () { return App.display.viewMode === 'plan'; }));
   host.appendChild(vtBtn('elev', 'Elevation', function () { App.setViewMode('elev'); }, function () { return App.display.viewMode === 'elev'; }));
   host.appendChild(el('div', { class: 'vt-sep' }));
-  host.appendChild(vtBtn('fit', 'Fit the model in view', function () { App.view.frame(); App.dirty.labels = true; }));
+  host.appendChild(vtBtn('zoomIn', 'Zoom in', function () { App.zoomBy(0.8); }));
+  host.appendChild(vtBtn('zoomOut', 'Zoom out', function () { App.zoomBy(1.25); }));
+  host.appendChild(vtBtn('fit', 'Fit the model in view', function () { App.fitView(); }));
   host.appendChild(vtBtn('compass', 'Cycle standard views', function () { App.cycleView(); }));
   host.appendChild(el('div', { class: 'vt-sep' }));
   host.appendChild(vtBtn('roof', 'Hide the roof (view only — it stays in the calculation)',
@@ -1084,6 +1129,20 @@ function buildViewTools() {
     function () { App.display.showValues = !App.display.showValues; App.markDirty('labels'); UI.sync(); },
     function () { return App.display.showValues; }));
 }
+
+/** Zoom step shared by the toolbar buttons and the keyboard. */
+App.zoomBy = function (f) {
+  this.view.ctl.zoom(f);
+  this.view.ctl.apply();
+  this.dirty.labels = true;
+};
+
+/** Fit: reframes the perspective camera, or resets an orthographic view. */
+App.fitView = function () {
+  if (this.view.ctl.ortho) this.view.orthoReset();
+  else this.view.frame();
+  this.dirty.labels = true;
+};
 
 App._viewCycle = 0;
 App.cycleView = function () {
@@ -1417,7 +1476,9 @@ function wireGlobalEvents() {
     if (k === 'escape') { if (Tour.active) Tour.end(false); closeModal(); App.closeDimEdit(); }
     else if (Tour.active && (k === 'arrowright' || k === 'enter')) { e.preventDefault(); Tour.go(1); }
     else if (Tour.active && k === 'arrowleft') { e.preventDefault(); Tour.go(-1); }
-    else if (k === 'f') { App.view.frame(); App.dirty.labels = true; }
+    else if (k === 'f') App.fitView();
+    else if (k === '+' || k === '=') App.zoomBy(0.8);
+    else if (k === '-' || k === '_') App.zoomBy(1.25);
     else if (k === 'p') App.setViewMode(App.display.viewMode === 'plan' ? '3d' : 'plan');
     else if (k === 'r') { App.rays.enabled = !App.rays.enabled; App.markDirty('rays'); UI.sync(); }
     else if (k === 'd') {

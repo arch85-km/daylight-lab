@@ -59,6 +59,19 @@ DaylightCore.prototype.setGeometry = function (geom, mats) {
   return { tris: this.bvh.triCount, nodes: this.bvh.nodeCount };
 };
 
+/**
+ * Install the sensor grid without allocating a daylight-coefficient matrix.
+ *
+ * directSun(), sunVisible() and transmittance() need only the points, their
+ * normals and the BVH — not the DC matrix — so the split-flux engine can use
+ * them for the direct beam, ASE and sun hours without ever baking.
+ */
+DaylightCore.prototype.setPoints = function (pts, nrm) {
+  this.pts = pts; this.nrm = nrm;
+  this.nPts = (pts.length / 3) | 0;
+  return { nPts: this.nPts };
+};
+
 /** Prepare a bake. Points/normals are flat Float32Arrays. */
 DaylightCore.prototype.beginBake = function (pts, nrm, cfg) {
   this.pts = pts; this.nrm = nrm; this.cfg = cfg;
@@ -119,7 +132,7 @@ DaylightCore.prototype.bakeChunk = function (from, to) {
 
         if (m.tau > 0) {                      // glazing: carry on, attenuated
           w *= m.tau;
-          if (w < 1e-5) break;
+          if (w < wgt * 1e-4) break;
           ox = hx + dx * EPS; oy = hy + dy * EPS; oz = hz + dz * EPS;
           continue;                           // transmission is not a bounce
         }
@@ -127,7 +140,14 @@ DaylightCore.prototype.bakeChunk = function (from, to) {
         if (bounce >= maxBounce) break;
         bounce++;
         w *= m.rho;
-        if (w < 1e-4) break;
+        /*
+         * Both cutoffs are RELATIVE to the starting weight. They used to be
+         * absolute (1e-4), which meant that raising the ray count shrank
+         * wgt = pi/N and truncated interreflection after fewer bounces — so a
+         * higher quality setting returned a LOWER daylight factor. Caught by
+         * the convergence sweep in test/audit.mjs.
+         */
+        if (w < wgt * 1e-3) break;
         // Russian roulette once the path is carrying little energy
         if (w < wgt * 0.02) {
           if (Math.random() > 0.5) break;
@@ -243,8 +263,14 @@ DaylightCore.prototype.sunVisible = function (sunDir, samples, out) {
  */
 DaylightCore.prototype.annualBegin = function (o) {
   var n = this.nPts;
+  // the hourly Perez sky needs a patch set whether or not a bake happened
+  if (!this.patches) this.patches = buildSkyPatches(1);
   return {
     o: o, day: 0, n: n,
+    // `o.df` present => diffuse comes from a daylight factor rather than the
+    // coefficient matrix, which is how the split-flux engine runs the year.
+    // Everything downstream — direct sun, UDI, DA, ASE, sun hours — is shared.
+    useDf: !!o.df,
     udi: new Float32Array(n * 5),
     daHours: new Float32Array(n), aseHours: new Float32Array(n),
     sunHours: new Float32Array(n),
@@ -274,13 +300,19 @@ DaylightCore.prototype.annualStep = function (st, nDays) {
         for (var q0 = 0; q0 < n; q0++) udi[q0 * 5] += 1;
         continue;
       }
+      if (!st.useDf && !this.dc) continue;   // nothing baked; nothing to add
       var k = clim.index(md.month, md.day, h);
       var sky = buildSkyVector(P, {
         model: 'perez', sun: sun, dni: clim.dni[k], dhi: clim.dhi[k],
         groundRefl: o.groundRefl, dayOfYear: st.day + 1
       });
 
-      this.diffuse(sky.lum, sky.ground, diff);
+      if (st.useDf) {
+        var df = o.df, Ed = sky.Ediff;
+        for (var q1 = 0; q1 < n; q1++) diff[q1] = df[q1] / 100 * Ed;
+      } else {
+        this.diffuse(sky.lum, sky.ground, diff);
+      }
       if (sky.Enormal > 1) {
         this.directSun(sun.dir, sky.Enormal, o.sunRadius || 0.00465, 1, dir);
         this.sunVisible(sun.dir, 1, vis);

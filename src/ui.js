@@ -685,7 +685,7 @@ function panelAnalysis() {
   return panel('analysis', 'Analysis', false, function (b) {
     b.appendChild(row('Engine', ctlSeg([
       { value: 'raytrace', label: 'Raytraced', title: 'Daylight coefficients — sees shading, reveals and interreflection' },
-      { value: 'splitflux', label: 'Split-flux', title: 'BRE hand method — instant, but blind to shading geometry' }
+      { value: 'splitflux', label: 'Split-flux', title: 'BRE method with shading and direct sun — instant, but no reveals and a uniform interreflected component' }
     ], function () { return App.model.analysis.engine; },
        function (v) { App.model.analysis.engine = v; App.markDirty('engine'); }), { wide: true, info: 'engines' }));
 
@@ -902,9 +902,14 @@ function panelDisplay() {
       function () { return App.display.showValues; },
       function (v) { App.display.showValues = v; App.markDirty('labels'); UI.sync(); })));
     b.appendChild(el('div', { class: 'grid2' }, [
-      field('Decimals', ctlNumber(function () { return App.display.decimals; },
-        function (v) { App.display.decimals = clamp(Math.round(v), 0, 3); App.markDirty('labels'); },
-        { min: 0, max: 3, step: 1, decimals: 0 })),
+      field('Decimals', ctlSelect(
+        [{ value: 'auto', label: 'Auto' }, { value: '0', label: '0' },
+         { value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }],
+        function () { return App.display.decimals == null ? 'auto' : String(App.display.decimals); },
+        function (v) {
+          App.display.decimals = v === 'auto' ? null : clamp(parseInt(v, 10), 0, 3);
+          App.markDirty('labels');
+        })),
       field('Label every', ctlNumber(function () { return App.display.labelEvery; },
         function (v) { App.display.labelEvery = clamp(Math.round(v), 1, 8); App.markDirty('labels'); },
         { min: 1, max: 8, step: 1, decimals: 0 }))
@@ -1008,9 +1013,10 @@ function panelExport() {
       [{ value: 1, label: '1×' }, { value: 2, label: '2×' }, { value: 3, label: '3×' }, { value: 4, label: '4×' }],
       function () { return App.exportOpts.scale; },
       function (v) { App.exportOpts.scale = +v; }), { wide: true }));
-    ['showTitle', 'showLegend', 'showStats', 'showValues'].forEach(function (k, i) {
+    ['showTitle', 'showLegend', 'showStats', 'showDimensions', 'showValues'].forEach(function (k, i) {
       b.appendChild(rowCheck(
-        ['Include title block', 'Include legend', 'Include statistics', 'Include workplane values'][i],
+        ['Include title block', 'Include legend', 'Include statistics',
+         'Include dimensions', 'Include workplane values'][i],
         ctlCheck(function () { return App.exportOpts[k]; }, function (v) { App.exportOpts[k] = v; })));
     });
     b.appendChild(el('div', { class: 'btn-row' }, [
@@ -1021,7 +1027,6 @@ function panelExport() {
       el('button', { class: 'btn sm', text: 'Model (JSON)', onclick: function () { App.exportModel(); } }),
       el('button', { class: 'btn sm', text: 'Load model…', onclick: function () { $('#file-json').click(); } })
     ]));
-    b.appendChild(hint('Every exported image carries “© Karam Al-Obaidi” in the title block.'));
   });
 }
 
@@ -1167,20 +1172,39 @@ var INFO = {
       'escapes is recorded against the sky patch it left through; a ray that hits a surface reflects diffusely with that ' +
       'surface\'s reflectance and carries on, up to the bounce limit. Glazing is passed through with its transmittance ' +
       'rather than blocking.</p>' +
-      '<p>This sees <b>everything</b>: overhangs, fins, louvre banks, the reveal formed by wall thickness, the well formed by ' +
-      'roof thickness, and true interreflection between surfaces. The result is a matrix, so one bake serves the daylight ' +
-      'factor, any instant, and the full 8760-hour year.</p>' +
+      '<p>The result is a matrix, so one bake serves the daylight factor, any instant, and the full 8760-hour year.</p>' +
       '<h3>Split-flux (BRE)</h3>' +
       '<span class="formula">DF = SC + ERC + IRC<br><br>' +
       'IRC = ( T·W / A(1−ρ) ) · ( C·ρ<sub>fw</sub> + 5(ρ<sub>cw</sub> − ρ<sub>fw</sub>) )</span>' +
-      '<p>The classic hand method. The sky component is integrated over the aperture, the externally reflected component ' +
-      'comes from the obstruction angle, and the internally reflected component from the BRE average formula — a single ' +
-      'number applied uniformly across the room.</p>' +
-      '<h3>The comparison is the lesson</h3><p>On a plain window the two engines agree closely. Now add a 0.6 m overhang and ' +
-      'switch between them: the raytraced result drops, the split-flux result does not move at all. Split-flux has no way to ' +
-      'know the overhang is there. Neither does it know about your reveals, so deepening the walls changes one engine and not ' +
-      'the other.</p>' +
-      '<p>Use split-flux to sanity-check an order of magnitude by hand. Use the raytracer for anything with geometry in it.</p>'
+      '<p>The sky component is integrated over the aperture, the externally reflected component comes from the ' +
+      'obstruction angle, and the internally reflected component from the BRE average formula — a single number applied ' +
+      'uniformly across the room.</p>' +
+      '<h3>What both engines now share</h3><ul>' +
+      '<li><b>Shading devices.</b> Overhangs, louvre banks and fins are tested against the real geometry in both. A ' +
+      'brise-soleil is an obstruction, and the split-flux method has always accounted for obstructions.</li>' +
+      '<li><b>Direct sun.</b> The beam is pure sun geometry, traced identically for both, so <b>ASE and Direct sun ' +
+      'hours are the same number whichever engine is selected</b> — as they should be.</li></ul>' +
+      '<h3>Where they still differ, and why</h3><table>' +
+      '<tr><th>Effect</th><th>Raytraced</th><th>Split-flux</th></tr>' +
+      '<tr><td>Reveal cutting off oblique sky</td><td>yes</td><td><b>no</b></td></tr>' +
+      '<tr><td>Glazing sitting deeper in the reveal</td><td>yes</td><td>yes, weakly</td></tr>' +
+      '<tr><td>Interreflection</td><td>simulated, bounce by bounce</td><td>one uniform value for the room</td></tr>' +
+      '<tr><td>Spatial distribution of bounced light</td><td>varies across the room</td><td>flat</td></tr>' +
+      '<tr><td>Speed</td><td>seconds</td><td>milliseconds</td></tr></table>' +
+      '<p><b>Try this.</b> Put the glazing at the <i>inside</i> face of the wall (Openings → Glass position in reveal), ' +
+      'then take the daylight factor at 0.10 m wall thickness and again at 0.90 m.</p>' +
+      '<p>The raytraced number falls by around 45%: a deep reveal cuts off the oblique sky a point near the back of the ' +
+      'room could otherwise see. The split-flux number does not move <i>at all</i> — the BRE method works from the net ' +
+      'glazed area and has no term for the depth of the opening.</p>' +
+      '<p>Now move the glazing to the outside face and repeat. This time split-flux <i>does</i> move, but only because ' +
+      'the pane itself is further away and subtends a smaller angle — never because of the reveal. That is precisely ' +
+      'what a simplified method cannot see, and it is worth more than the headline number.</p>' +
+      '<h3>One departure from the textbook</h3>' +
+      '<p>The BRE internally reflected component contains no shading term, so on its own it would not respond to an ' +
+      'overhang — and in a deep room, where the IRC dominates the back half, the daylight factor there would look ' +
+      'unmoved. This tool scales the IRC by the same fraction of sky flux the devices remove. That is an extension of ' +
+      'BS 8206-2, not part of it, and it is the reason the split-flux result here will not exactly match a hand ' +
+      'calculation on a shaded window.</p>'
   },
   skies: {
     title: 'Sky models',
@@ -1243,7 +1267,8 @@ var INFO = {
       'the full year and take a few seconds.</li>' +
       '<li><b>Calculate</b> re-bakes the grid. It re-runs on its own whenever the geometry changes.</li>' +
       '<li>Drag in the viewport to orbit, right-drag or shift-drag to pan, scroll to zoom. One finger orbits and two fingers ' +
-      'pan and zoom on a touchscreen.</li>' +
+      'pan and zoom on a touchscreen. In Plan and Elevation the view is locked square-on, so dragging pans instead of ' +
+      'orbiting — use the zoom buttons, the wheel, or <b>+</b> and <b>−</b>, and <b>F</b> to fit.</li>' +
       '<li><b>Drag any window, skylight or door</b> in the viewport to move it. Hold Shift or use the right button to orbit from on top of one, and Ctrl+Z undoes a move.</li>' +
       '<li>Click any <b>dimension label</b> to type a new value. The model rebuilds immediately.</li>' +
       '<li>The two sliders at the bottom scrub time of day and day of year.</li></ul>' +

@@ -33,6 +33,10 @@ self.onmessage = function (ev) {
         reply(id, core.setGeometry({ pos: msg.pos, mat: msg.mat }, msg.materials));
         break;
 
+      case 'points':
+        reply(id, core.setPoints(msg.pts, msg.nrm));
+        break;
+
       case 'bake': {
         var t0 = Date.now();
         var info = core.beginBake(msg.pts, msg.nrm, msg.cfg);
@@ -79,6 +83,7 @@ self.onmessage = function (ev) {
 
       case 'annualBegin':
         annualState = core.annualBegin({
+          df: msg.df || null,
           climate: makeClimate({
             dni: msg.dni, dhi: msg.dhi, ghi: msg.ghi, temp: msg.temp,
             name: msg.climateName, loc: msg.site

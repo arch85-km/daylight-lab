@@ -14,6 +14,9 @@ function OrbitCtl(camera, dom, onChange) {
   // aperture dragging); `suspend` stops an in-flight gesture, for the touch
   // press-and-hold that promotes an orbit into a drag.
   this.claim = null; this.suspend = false;
+  // In an orthographic view the camera direction is fixed by the view itself,
+  // so gestures re-route: dragging pans and the wheel changes the extent.
+  this.ortho = false; this.onOrtho = null;
   this.target = new THREE.Vector3(0, 1.2, 0);
   this.dist = 18; this.theta = -0.6; this.phi = 1.05;
   this.minPhi = 0.02; this.maxPhi = Math.PI - 0.02;
@@ -78,17 +81,27 @@ OrbitCtl.prototype._bind = function () {
   }, { passive: false });
 };
 OrbitCtl.prototype.orbit = function (dx, dy) {
+  if (this.ortho) { this.pan(dx, dy); return; }   // a locked view pans instead
   this.theta -= dx * 0.007;
   this.phi = clamp(this.phi - dy * 0.007, this.minPhi, this.maxPhi);
 };
-OrbitCtl.prototype.zoom = function (f) { this.dist = clamp(this.dist * f, this.minDist, this.maxDist); };
+OrbitCtl.prototype.zoom = function (f) {
+  if (this.ortho) { if (this.onOrtho) this.onOrtho.zoom(f); return; }
+  this.dist = clamp(this.dist * f, this.minDist, this.maxDist);
+};
 OrbitCtl.prototype.pan = function (dx, dy) {
+  if (this.ortho) { if (this.onOrtho) this.onOrtho.pan(dx, dy); return; }
   var scale = this.dist * 0.0016;
   var right = new THREE.Vector3().setFromMatrixColumn(this.cam.matrix, 0);
   var up = new THREE.Vector3().setFromMatrixColumn(this.cam.matrix, 1);
   this.target.addScaledVector(right, -dx * scale).addScaledVector(up, dy * scale);
 };
 OrbitCtl.prototype.apply = function () {
+  if (this.ortho) {
+    if (this.onOrtho) this.onOrtho.apply();
+    if (this.onChange) this.onChange();
+    return;
+  }
   var sp = Math.sin(this.phi), cp = Math.cos(this.phi);
   this.cam.position.set(
     this.target.x + this.dist * sp * Math.sin(this.theta),
@@ -163,9 +176,47 @@ View.prototype.resize = function () {
 };
 View.prototype._orthoFrame = function (aspect) {
   var e = this.orthoExtent || 6;
-  this.ortho.left = -e * aspect; this.ortho.right = e * aspect;
-  this.ortho.top = e; this.ortho.bottom = -e;
+  var px = this.orthoPan ? this.orthoPan.x : 0, py = this.orthoPan ? this.orthoPan.y : 0;
+  this.ortho.left = -e * aspect + px; this.ortho.right = e * aspect + px;
+  this.ortho.top = e + py; this.ortho.bottom = -e + py;
   this.ortho.updateProjectionMatrix();
+};
+
+/**
+ * Zoom and pan handlers for the orthographic views. Zoom scales the visible
+ * extent rather than moving the camera — an orthographic camera sees the same
+ * thing wherever it sits along its axis — and is clamped either side of the
+ * extent the view was fitted at.
+ */
+View.prototype._orthoHandlers = function () {
+  var self = this;
+  return {
+    zoom: function (f) {
+      var base = self.orthoBase || self.orthoExtent || 6;
+      self.orthoExtent = clamp((self.orthoExtent || base) * f, base * 0.15, base * 6);
+      self._orthoFrame(self.camera.aspect || 1);
+      self.dirty = true;
+    },
+    pan: function (dx, dy) {
+      if (!self.orthoPan) self.orthoPan = new THREE.Vector2();
+      // one pixel of drag moves one pixel of scene at the current extent
+      var h = self.canvas.clientHeight || 1;
+      var k = (self.orthoExtent || 6) * 2 / h;
+      self.orthoPan.x -= dx * k;
+      self.orthoPan.y += dy * k;
+      self._orthoFrame(self.camera.aspect || 1);
+      self.dirty = true;
+    },
+    apply: function () { self.dirty = true; }
+  };
+};
+
+/** Reset an orthographic view to the extent and centring it was fitted at. */
+View.prototype.orthoReset = function () {
+  if (this.orthoBase) this.orthoExtent = this.orthoBase;
+  if (this.orthoPan) this.orthoPan.set(0, 0);
+  this._orthoFrame(this.camera.aspect || 1);
+  this.dirty = true;
 };
 
 /** Theme colours come from the CSS custom properties so the two never drift. */
@@ -590,7 +641,7 @@ View.prototype.setViewMode = function (mode, opts) {
     this.ortho.near = 40 - (eye - (this.grid ? this.grid.y : 0.75)) + 0.02;
     this.ortho.far = 400;
     this.active = this.ortho;
-    this.ctl.enabled = false;
+    this.ctl.enabled = true; this.ctl.ortho = true;
   } else if (mode === 'elev') {
     this.orthoExtent = Math.max(b.x1 - b.x0, b.y1 - b.y0) * 0.62;
     this.ortho.position.set(cx, (b.y0 + b.y1) / 2, cz + 80);
@@ -598,10 +649,16 @@ View.prototype.setViewMode = function (mode, opts) {
     this.ortho.lookAt(cx, (b.y0 + b.y1) / 2, cz);
     this.ortho.near = -200; this.ortho.far = 400;
     this.active = this.ortho;
-    this.ctl.enabled = false;
+    this.ctl.enabled = true; this.ctl.ortho = true;
   } else {
     this.active = this.camera;
-    this.ctl.enabled = true;
+    this.ctl.enabled = true; this.ctl.ortho = false;
+  }
+  if (this.ctl.ortho) {
+    this.orthoBase = this.orthoExtent;      // the fitted extent, for clamping
+    if (!this.orthoPan) this.orthoPan = new THREE.Vector2();
+    this.orthoPan.set(0, 0);
+    this.ctl.onOrtho = this._orthoHandlers();
   }
   this.resize();
   this._orthoFrame(this.camera.aspect || 1);

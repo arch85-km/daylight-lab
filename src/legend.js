@@ -170,38 +170,134 @@ function legendSubtitle(ctx) {
   return '';
 }
 
+/** Wrap `text` to `maxW` at the current font, returning an array of lines. */
+function wrapText(g, text, maxW) {
+  var words = String(text).split(' '), lines = [], line = '';
+  for (var i = 0; i < words.length; i++) {
+    var trial = line ? line + ' ' + words[i] : words[i];
+    if (g.measureText(trial).width > maxW && line) { lines.push(line); line = words[i]; }
+    else line = trial;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+var LEGEND_MIN_W = 150, LEGEND_MAX_W = 330;
+
 /**
- * Draw the same legend onto a 2D canvas, for the exported image.
- * Kept deliberately close to the DOM version so the export matches the screen.
+ * Draw the legend onto a 2D canvas for the exported image.
+ *
+ * It sizes itself: the box is measured from its own title, subtitle, ticks and
+ * (for UDI) interval rows, so nothing can escape it the way the old fixed
+ * 186 px box did. The unit rides on the top tick exactly as it does in the DOM
+ * legend, instead of being a separate label that collided with the value.
+ *
+ * @returns {object} the rectangle actually used, so the caller can place it
  */
-function drawLegendCanvas(g, x, y, w, h, ctx, ink, panel, line) {
+function drawLegendCanvas(g, x, y, ctx, ink, panel, line, ink2, ink3) {
   var M = METRICS[ctx.metric], scale = ctx.scale;
+  var pad = 12, barW = 18, barGap = 9;
+  var isUdi = ctx.metric === 'udi' && ctx.compliance;
+  var labels = isUdi ? udiLabels(ctx.analysis.udi) : null;
+
+  // ---- measure everything before drawing anything
   g.save();
+  g.font = '600 13px system-ui, sans-serif';
+  var titleW = g.measureText(M.label).width;
+  g.font = '11px ui-monospace, SFMono-Regular, monospace';
+  var subText = legendSubtitle(ctx);
+  var tickTexts = [], steps = 5, i;
+  for (i = 0; i <= steps; i++) {
+    var v = lerp(scale.min, scale.max, 1 - i / steps);
+    tickTexts.push(num(v, M.decimals) + (i === 0 ? ' ' + tickUnit(M) : ''));
+  }
+  var tickW = 0;
+  for (i = 0; i < tickTexts.length; i++) tickW = Math.max(tickW, g.measureText(tickTexts[i]).width);
+
+  var binW = 0;
+  if (isUdi) {
+    g.font = '11px system-ui, sans-serif';
+    for (i = 0; i < 5; i++) {
+      binW = Math.max(binW, 13 + 7 + g.measureText(UDI_BINS[i].label).width + 10 +
+                            g.measureText(ctx.compliance.udiMean[i].toFixed(0) + '%').width);
+    }
+  }
+
+  var subW = g.measureText(subText).width;
+  var contentW = Math.max(titleW, barW + barGap + tickW, binW,
+                          Math.min(subW, LEGEND_MAX_W - pad * 2),
+                          LEGEND_MIN_W - pad * 2);
+  var w = clamp(Math.ceil(contentW + pad * 2), LEGEND_MIN_W, LEGEND_MAX_W);
+  var innerW = w - pad * 2;
+
+  g.font = '11px ui-monospace, SFMono-Regular, monospace';
+  var subLines = wrapText(g, subText, innerW);
+
+  // ---- height from the content
+  var yy = pad + 14;                                   // title baseline
+  yy += 4 + subLines.length * 14;                      // subtitle block
+  var binTop = yy;
+  if (isUdi) yy += 5 * 17 + 8;
+  var barTop = yy + 4;
+  var barH = 150;
+  var h = barTop + barH + pad;
+  if (ctx.metric === 'df') h += 26;                    // the band footnote
+
+  // ---- draw
   g.fillStyle = panel; g.strokeStyle = line; g.lineWidth = 1;
-  roundRect(g, x, y, w, h, 6); g.fill(); g.stroke();
+  roundRect(g, x, y, w, h, 7); g.fill(); g.stroke();
 
   g.fillStyle = ink;
   g.font = '600 13px system-ui, sans-serif';
-  g.fillText(M.label, x + 12, y + 22);
-  g.font = '11px ui-monospace, monospace';
-  g.globalAlpha = 0.65;
-  g.fillText(legendSubtitle(ctx), x + 12, y + 38);
-  g.globalAlpha = 1;
+  g.textAlign = 'left';
+  g.fillText(M.label, x + pad, y + pad + 11);
 
-  var barX = x + 12, barY = y + 50, barW = 18, barH = h - 68;
-  var grd = g.createLinearGradient(0, barY + barH, 0, barY);
-  for (var i = 0; i <= 12; i++) grd.addColorStop(i / 12, rampHex(scale.ramp, scale.reverse ? 1 - i / 12 : i / 12));
-  g.fillStyle = grd; g.fillRect(barX, barY, barW, barH);
-  g.strokeStyle = line; g.strokeRect(barX, barY, barW, barH);
-
-  g.fillStyle = ink; g.font = '11px ui-monospace, monospace';
-  for (i = 0; i <= 5; i++) {
-    var v = lerp(scale.min, scale.max, 1 - i / 5);
-    g.fillText(num(v, M.decimals), barX + barW + 8, barY + barH * i / 5 + 4);
+  g.font = '11px ui-monospace, SFMono-Regular, monospace';
+  g.fillStyle = ink3 || ink2 || ink;
+  for (i = 0; i < subLines.length; i++) {
+    g.fillText(subLines[i], x + pad, y + pad + 27 + i * 14);
   }
-  g.font = '600 11px ui-monospace, monospace';
-  g.fillText(tickUnit(M), barX + barW + 8, barY - 6);
+
+  if (isUdi) {
+    g.font = '11px system-ui, sans-serif';
+    for (i = 4; i >= 0; i--) {
+      var row = y + binTop + (4 - i) * 17 + 10;
+      g.fillStyle = UDI_COLORS[i];
+      roundRect(g, x + pad, row - 9, 13, 13, 3); g.fill();
+      g.strokeStyle = line; g.lineWidth = 1; g.stroke();
+      g.fillStyle = ink2 || ink;
+      g.textAlign = 'left';
+      g.fillText(UDI_BINS[i].label, x + pad + 20, row + 1);
+      g.fillStyle = ink3 || ink;
+      g.textAlign = 'right';
+      g.fillText(ctx.compliance.udiMean[i].toFixed(0) + '%', x + w - pad, row + 1);
+      g.textAlign = 'left';
+    }
+  }
+
+  var barX = x + pad, barY = y + barTop;
+  var grd = g.createLinearGradient(0, barY + barH, 0, barY);
+  for (i = 0; i <= 12; i++) grd.addColorStop(i / 12, rampHex(scale.ramp, scale.reverse ? 1 - i / 12 : i / 12));
+  g.fillStyle = grd; g.fillRect(barX, barY, barW, barH);
+  g.strokeStyle = line; g.lineWidth = 1; g.strokeRect(barX, barY, barW, barH);
+
+  g.fillStyle = ink2 || ink;
+  g.font = '11px ui-monospace, SFMono-Regular, monospace';
+  for (i = 0; i <= steps; i++) {
+    g.fillText(tickTexts[i], barX + barW + barGap, barY + barH * i / steps + 4);
+  }
+
+  if (ctx.metric === 'df') {
+    g.fillStyle = ink3 || ink2 || ink;
+    g.font = '10px system-ui, sans-serif';
+    var foot = wrapText(g, '<1% poor · 1–2% modest · 2–5% good · >5% very high', innerW);
+    for (i = 0; i < Math.min(2, foot.length); i++) {
+      g.fillText(foot[i], x + pad, barY + barH + 14 + i * 12);
+    }
+  }
+
   g.restore();
+  return { x: x, y: y, w: w, h: h };
 }
 
 function roundRect(g, x, y, w, h, r) {
