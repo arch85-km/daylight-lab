@@ -1269,10 +1269,10 @@ var INFO = {
       '<li>Drag in the viewport to orbit, right-drag or shift-drag to pan, scroll to zoom. One finger orbits and two fingers ' +
       'pan and zoom on a touchscreen. In Plan and Elevation the view is locked square-on, so dragging pans instead of ' +
       'orbiting — use the zoom buttons, the wheel, or <b>+</b> and <b>−</b>, and <b>F</b> to fit.</li>' +
-      '<li>The <b>hand tool</b> (the toolbar hand, or <b>H</b>) turns a plain drag into a pan in every view, and stops you ' +
-      'nudging an opening while you are only moving the model about. <b>Hold Space</b> to do the same for as long as the key ' +
-      'is down. On a small screen, <b>C</b> clears every floating panel away, and each panel folds to its title bar from the ' +
-      'chevron on its right.</li>' +
+      '<li>The <b>hand tool</b> — the hand in the viewport toolbar — turns a plain drag into a pan in every view, and stops ' +
+      'you nudging an opening while you are only moving the model about. <b>Hold Space</b> to do the same without switching ' +
+      'tools, and <b>Esc</b> always puts you back to orbiting. On a small screen, <b>C</b> clears every floating panel away, ' +
+      'and each panel folds to its title bar from the chevron on its right.</li>' +
       '<li><b>Drag any window, skylight or door</b> in the viewport to move it. Hold Shift or use the right button to orbit from on top of one, and Ctrl+Z undoes a move.</li>' +
       '<li>Click any <b>dimension label</b> to type a new value. The model rebuilds immediately.</li>' +
       '<li>The two sliders at the bottom scrub time of day and day of year.</li></ul>' +

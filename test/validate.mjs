@@ -644,6 +644,29 @@ const camState = () => page.evaluate(() => ({
 }));
 
 await aimAt('south');
+const o0 = await camState();
+await dragBy(emptyPoint, 90, 40, 8);
+const o1 = await camState();
+ok('a plain drag orbits the model',
+  o1.theta !== o0.theta && o1.phi !== o0.phi &&
+  JSON.stringify(o1.target) === JSON.stringify(o0.target),
+  `theta ${o0.theta} → ${o1.theta}`);
+
+// UI.build() clears UI.refreshers, so a toolbar built before it loses every
+// on-state refresher and its toggles go dark. Catch that ordering directly.
+const toggles = await page.evaluate(() => {
+  const on = () => [...document.querySelectorAll('#viewtools .btn')]
+    .filter((b) => b.classList.contains('on')).length;
+  const before = on();
+  App.setHandTool(true); const withHand = on();
+  App.setHandTool(false);
+  return { before, withHand };
+});
+ok('the viewport toolbar shows which tools are on',
+  toggles.before > 0 && toggles.withHand === toggles.before + 1,
+  `${toggles.before} lit at rest, ${toggles.withHand} with the hand tool on`);
+
+await aimAt('south');
 await page.evaluate(() => App.setHandTool(true));
 const h0 = await camState();
 await dragBy(emptyPoint, 90, 40, 8);
@@ -684,6 +707,11 @@ const spReleased = await page.evaluate(() => App.view.ctl.panning());
 ok('holding Space pans, releasing it returns to orbit',
   spHeld && !spReleased && sp1.theta === sp0.theta &&
   JSON.stringify(sp1.target) !== JSON.stringify(sp0.target));
+
+await page.evaluate(() => App.setHandTool(true));
+await page.keyboard.press('Escape');
+ok('Escape always returns the viewport to orbiting',
+  !(await page.evaluate(() => App.view.ctl.panning())));
 
 const hidden = (id) => page.evaluate(
   (i) => getComputedStyle(document.getElementById(i)).display === 'none', id);
@@ -899,6 +927,39 @@ const mTour = await page.evaluate(() => ({ all: TOUR_STEPS.length, vis: Tour._vi
 ok('tour steps with hidden targets drop out on a phone', mTour.vis < mTour.all && mTour.vis >= 7,
   `${mTour.vis} of ${mTour.all} steps`);
 ok('no horizontal page scroll at 390 px', mobile.noHScroll, 'canvas ' + mobile.canvasW + ' px wide');
+
+// The floating panels are absolutely positioned against the stage, so a size
+// the layout was never checked at silently buries one under another. Sweep the
+// sizes a student actually uses and assert every pair is clear.
+const overlaps = [];
+for (const [w, h] of [[915, 925], [1024, 768], [1100, 900], [1180, 800],
+  [1280, 800], [1366, 768], [1440, 900], [1536, 864], [1920, 1080]]) {
+  await page.setViewportSize({ width: w, height: h });
+  await page.evaluate(() => { App.view.resize(); App.view.frame(); });
+  const bad = await page.evaluate(() => {
+    const stage = document.getElementById('stage').getBoundingClientRect(), R = {};
+    ['legend', 'stats', 'solarhud', 'timebar', 'viewtools'].forEach((i) => {
+      const e = document.getElementById(i);
+      if (e && getComputedStyle(e).display !== 'none') R[i] = e.getBoundingClientRect();
+    });
+    const out = [], k = Object.keys(R);
+    for (let a = 0; a < k.length; a++) for (let c = a + 1; c < k.length; c++) {
+      const A = R[k[a]], B = R[k[c]];
+      if (Math.min(A.right, B.right) - Math.max(A.left, B.left) > 1 &&
+          Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top) > 1) out.push(k[a] + '/' + k[c]);
+    }
+    k.forEach((i) => {
+      const A = R[i];
+      if (A.left < stage.left - 1 || A.right > stage.right + 1 ||
+          A.top < stage.top - 1 || A.bottom > stage.bottom + 1) out.push(i + ' off-stage');
+    });
+    return out;
+  });
+  if (bad.length) overlaps.push(`${w}×${h}: ${bad.join(', ')}`);
+}
+ok('the floating panels never overlap or leave the stage', overlaps.length === 0,
+  overlaps.length ? overlaps.join(' | ') : '9 viewport sizes clear');
+
 await page.setViewportSize({ width: 1440, height: 900 });
 
 /* export */

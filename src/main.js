@@ -64,9 +64,11 @@ App.init = function () {
   this.updateSunObject();
 
   buildMetricTabs();
+  // UI.build() clears UI.refreshers, so the viewport toolbar — whose buttons
+  // register their own on-state refreshers — has to be built after the rail.
+  UI.build($('#rail'));
   buildViewTools();
   initHudFolds();
-  UI.build($('#rail'));
   wireGlobalEvents();
   this.loadScenarios();
 
@@ -1110,7 +1112,7 @@ function buildViewTools() {
     function () { App.setViewMode('plan'); }, function () { return App.display.viewMode === 'plan'; }));
   host.appendChild(vtBtn('elev', 'Elevation', function () { App.setViewMode('elev'); }, function () { return App.display.viewMode === 'elev'; }));
   host.appendChild(el('div', { class: 'vt-sep' }));
-  host.appendChild(vtBtn('hand', 'Pan the model (H) — drag to slide it around the screen. Hold Space for the same thing without leaving the pointer.',
+  host.appendChild(vtBtn('hand', 'Pan the model — drag to slide it around the screen instead of orbiting. Hold Space to do the same without switching tools; Esc leaves the tool.',
     function () { App.setHandTool(!App.display.handTool); },
     function () { return App.display.handTool; }));
   host.appendChild(vtBtn('zoomIn', 'Zoom in', function () { App.zoomBy(0.8); }));
@@ -1118,7 +1120,7 @@ function buildViewTools() {
   host.appendChild(vtBtn('fit', 'Fit the model in view', function () { App.fitView(); }));
   host.appendChild(vtBtn('compass', 'Cycle standard views', function () { App.cycleView(); }));
   host.appendChild(el('div', { class: 'vt-sep' }));
-  host.appendChild(vtBtn('roof', 'Hide the roof (O) — view only, it stays in the calculation',
+  host.appendChild(vtBtn('roof', 'Hide the roof (H) — view only, it stays in the calculation',
     function () { App.display.hideRoof = !App.display.hideRoof; App.markDirty('visibility'); App.refreshDisplay(); UI.sync(); },
     function () { return App.display.hideRoof; }));
   host.appendChild(vtBtn('sun', 'Solar rays',
@@ -1551,7 +1553,11 @@ function wireGlobalEvents() {
     var k = e.key.toLowerCase();
     if (k === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); App.undoMove(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (k === 'escape') { if (Tour.active) Tour.end(false); closeModal(); App.closeDimEdit(); }
+    if (k === 'escape') {
+      if (Tour.active) Tour.end(false);
+      closeModal(); App.closeDimEdit();
+      if (App.display.handTool) App.setHandTool(false);   // never get stuck panning
+    }
     else if (Tour.active && (k === 'arrowright' || k === 'enter')) { e.preventDefault(); Tour.go(1); }
     else if (Tour.active && k === 'arrowleft') { e.preventDefault(); Tour.go(-1); }
     else if (k === 'f') App.fitView();
@@ -1565,8 +1571,7 @@ function wireGlobalEvents() {
       App.markDirty('dims'); UI.sync();
     }
     else if (k === 'v') { App.display.showValues = !App.display.showValues; App.markDirty('labels'); UI.sync(); }
-    else if (k === 'o') { App.display.hideRoof = !App.display.hideRoof; App.markDirty('visibility'); App.refreshDisplay(); UI.sync(); }
-    else if (k === 'h') App.setHandTool(!App.display.handTool);
+    else if (k === 'h') { App.display.hideRoof = !App.display.hideRoof; App.markDirty('visibility'); App.refreshDisplay(); UI.sync(); }
     else if (k === 'c') App.setCleanView(!App.display.cleanView);
     else if (k === '?') App.openInfo('help');
     else if (k >= '1' && k <= '6') App.setMetric(['illuminance', 'df', 'udi', 'da', 'ase', 'sunhours'][+k - 1]);

@@ -620,8 +620,16 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   #legend, #stats { width: 168px; }
   #solarhud { display: none; }
 }
+/* Narrow stage, but the legend and the statistics are still on screen: stop
+   centring the two bars in the whole stage — they run under the right-hand
+   panels — and let them use the width left of that column instead. */
 @media (max-width: 1180px) {
-  #timebar { width: min(460px, calc(100% - 40px)); }
+  #timebar { left: 12px; right: 192px; width: auto; transform: none; }
+  #viewtools {
+    left: 12px; transform: none; max-width: calc(100% - 192px);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  #viewtools::-webkit-scrollbar { display: none; }
 }
 /* Short viewports: the legend and the statistics share the right-hand edge,
    so give the legend bar less height rather than let the two collide. */
