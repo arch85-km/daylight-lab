@@ -17,6 +17,9 @@ function OrbitCtl(camera, dom, onChange) {
   // In an orthographic view the camera direction is fixed by the view itself,
   // so gestures re-route: dragging pans and the wheel changes the extent.
   this.ortho = false; this.onOrtho = null;
+  // Hand (pan) tool. `hand` is the toolbar toggle, `handTemp` is the Space
+  // key held down; either one makes a plain left-drag pan instead of orbit.
+  this.hand = false; this.handTemp = false;
   this.target = new THREE.Vector3(0, 1.2, 0);
   this.dist = 18; this.theta = -0.6; this.phi = 1.05;
   this.minPhi = 0.02; this.maxPhi = Math.PI - 0.02;
@@ -36,7 +39,11 @@ OrbitCtl.prototype._bind = function () {
     touches[e.pointerId] = { x: e.clientX, y: e.clientY };
     var n = Object.keys(touches).length;
     if (n === 1) {
-      drag = { x: e.clientX, y: e.clientY, pan: e.button === 1 || e.button === 2 || e.shiftKey || e.ctrlKey };
+      drag = {
+        x: e.clientX, y: e.clientY,
+        pan: s.panning() || e.button === 1 || e.button === 2 || e.shiftKey || e.ctrlKey
+      };
+      if (drag.pan) dom.classList.add('grabbing');
     } else if (n === 2) {
       var k = Object.keys(touches);
       lastPinch = Math.hypot(touches[k[0]].x - touches[k[1]].x, touches[k[0]].y - touches[k[1]].y);
@@ -65,6 +72,7 @@ OrbitCtl.prototype._bind = function () {
   };
   var up = function (e) {
     s.suspend = false;
+    dom.classList.remove('grabbing');
     delete touches[e.pointerId];
     if (Object.keys(touches).length < 2) { lastPinch = 0; lastMid = null; }
     if (!Object.keys(touches).length) drag = null;
@@ -79,6 +87,21 @@ OrbitCtl.prototype._bind = function () {
     if (!s.enabled) return;
     s.zoom(Math.pow(1.0016, e.deltaY)); s.apply(); e.preventDefault();
   }, { passive: false });
+};
+/** True while the hand tool owns a plain left-drag. */
+OrbitCtl.prototype.panning = function () {
+  return !!(this.hand || this.handTemp);
+};
+/** Reflect the hand state in the cursor. */
+OrbitCtl.prototype.refreshCursor = function () {
+  this.dom.classList.toggle('hand', this.panning());
+  if (!this.panning()) this.dom.classList.remove('grabbing');
+};
+OrbitCtl.prototype.setHand = function (on) {
+  this.hand = !!on; this.refreshCursor();
+};
+OrbitCtl.prototype.setHandTemp = function (on) {
+  this.handTemp = !!on; this.refreshCursor();
 };
 OrbitCtl.prototype.orbit = function (dx, dy) {
   if (this.ortho) { this.pan(dx, dy); return; }   // a locked view pans instead
@@ -693,9 +716,15 @@ View.prototype.frame = function (margin) {
   var b = this.built ? this.built.outer : { x0: -4, x1: 4, y0: 0, y1: 3, z0: -3, z1: 3 };
   var r = Math.hypot(b.x1 - b.x0, b.y1 - b.y0, b.z1 - b.z0) / 2;
   this.ctl.target.set((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2 - 0.2, (b.z0 + b.z1) / 2);
-  // pull back far enough to hold the sun-path dome when it is being shown
-  var m = margin || (this.gSun.children.length ? 1.7 : 1.25);
-  this.ctl.dist = r / Math.tan(this.camera.fov * DEG / 2) * m;
+  // Frame the ROOM, never the sun-path dome. Framing the dome shrinks the
+  // thing being studied to a sixth of the viewport; the dome is allowed to
+  // run off the edges, exactly as it does in every other sun-path tool.
+  var m = margin || 1.15;
+  // the field of view is specified vertically, so on a viewport that is
+  // narrower than it is tall the horizontal angle is what has to hold the room
+  var tan = Math.tan(this.camera.fov * DEG / 2);
+  var a = this.camera.aspect || 1;
+  this.ctl.dist = r / (a < 1 ? tan * a : tan) * m;
   this.ctl.apply();
   this.dirty = true;
 };

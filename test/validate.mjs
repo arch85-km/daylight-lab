@@ -598,6 +598,119 @@ ok('a wall opening cannot be dragged edge-on in plan view',
 await page.evaluate(async () => { App.setViewMode('3d'); App.resetModel(); await App.whenIdle(); });
 await idle();
 
+/* ---------------- viewport navigation ---------------- */
+console.log('\n-- navigation --');
+
+// framing must describe the room, not whatever else happens to be in the scene
+const framing = await page.evaluate(async () => {
+  const d = () => { App.view.frame(); return +App.view.ctl.dist.toFixed(4); };
+  App.display.showSunPath = true; App.markDirty('sunpath');
+  await App.whenIdle();
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const withDome = d(), domeShown = App.view.gSun.children.length > 0;
+  App.display.showSunPath = false; App.markDirty('sunpath');
+  await App.whenIdle();
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const without = d();
+  App.display.showSunPath = true; App.markDirty('sunpath');
+  await App.whenIdle();
+  return { withDome, without, domeShown };
+});
+await idle();
+ok('the sun-path dome does not push the camera off the room',
+  framing.domeShown && framing.withDome === framing.without,
+  `dist ${framing.withDome} m with the dome, ${framing.without} m without`);
+
+const roomShare = await page.evaluate(() => {
+  App.view.frame();
+  const o = App.built.outer, pr = {}, xs = [], ys = [];
+  for (const X of [o.x0, o.x1]) for (const Y of [o.y0, o.y1]) for (const Z of [o.z0, o.z1]) {
+    App.view.project(X, Y, Z, pr); xs.push(pr.x); ys.push(pr.y);
+  }
+  const st = document.getElementById('stage').getBoundingClientRect();
+  return (Math.max(...xs) - Math.min(...xs)) / st.width;
+});
+ok('a fitted room fills at least half the viewport width', roomShare > 0.5,
+  (100 * roomShare).toFixed(0) + '% of the stage width');
+
+/** A patch of empty sky, clear of the model and of every floating panel. */
+const emptyPoint = await page.evaluate(() => {
+  const cr = document.getElementById('view').getBoundingClientRect();
+  return { sx: cr.left + cr.width * 0.1, sy: cr.top + cr.height * 0.22 };
+});
+const camState = () => page.evaluate(() => ({
+  theta: +App.view.ctl.theta.toFixed(5), phi: +App.view.ctl.phi.toFixed(5),
+  target: App.view.ctl.target.toArray().map((v) => +v.toFixed(4))
+}));
+
+await aimAt('south');
+await page.evaluate(() => App.setHandTool(true));
+const h0 = await camState();
+await dragBy(emptyPoint, 90, 40, 8);
+const h1 = await camState();
+ok('with the hand tool on, a plain drag pans instead of orbiting',
+  h1.theta === h0.theta && h1.phi === h0.phi &&
+  JSON.stringify(h1.target) !== JSON.stringify(h0.target),
+  `target ${h0.target} → ${h1.target}`);
+ok('the hand tool shows a grab cursor',
+  await page.evaluate(() => document.getElementById('view').classList.contains('hand')));
+
+await aimAt('south');
+await page.evaluate(() => App.setHandTool(true));
+const g0 = await camState();
+const gAp = await southAp();
+await dragBy(await screenOf('S'), 80, 0, 8);
+ok('the hand tool cannot nudge an opening',
+  (await southAp()).offset === gAp.offset &&
+  JSON.stringify((await camState()).target) !== JSON.stringify(g0.target),
+  'window stayed at ' + gAp.offset + ' m');
+
+await page.evaluate(() => App.setHandTool(false));
+await aimAt('south');
+const n0 = await southAp();
+await dragBy(await screenOf('S'), 60, 0, 8);
+ok('with the hand tool off, the same drag still moves the opening',
+  (await southAp()).offset > n0.offset + 0.2,
+  `offset ${n0.offset} → ${(await southAp()).offset} m`);
+
+await aimAt('south');
+const sp0 = await camState();
+await page.keyboard.down('Space');
+const spHeld = await page.evaluate(() => App.view.ctl.panning());
+await dragBy(emptyPoint, 70, 30, 8);
+const sp1 = await camState();
+await page.keyboard.up('Space');
+const spReleased = await page.evaluate(() => App.view.ctl.panning());
+ok('holding Space pans, releasing it returns to orbit',
+  spHeld && !spReleased && sp1.theta === sp0.theta &&
+  JSON.stringify(sp1.target) !== JSON.stringify(sp0.target));
+
+const hidden = (id) => page.evaluate(
+  (i) => getComputedStyle(document.getElementById(i)).display === 'none', id);
+await page.evaluate(() => App.setCleanView(true));
+const cleanOn = [await hidden('legend'), await hidden('stats'), await hidden('timebar'),
+  await hidden('viewtools')];
+await page.evaluate(() => App.setCleanView(false));
+const cleanOff = await hidden('legend');
+ok('clean view hides the floating panels but keeps the toolbar',
+  cleanOn[0] && cleanOn[1] && cleanOn[2] && !cleanOn[3] && !cleanOff);
+
+const fold = await page.evaluate(() => {
+  const lg = document.getElementById('legend');
+  const before = lg.getBoundingClientRect().height;
+  lg.querySelector('.hud-head').click();
+  const after = lg.getBoundingClientRect().height;
+  const headSeen = lg.querySelector('.hud-head').getBoundingClientRect().height > 8;
+  lg.querySelector('.hud-head').click();
+  return { before, after, headSeen, restored: lg.getBoundingClientRect().height };
+});
+ok('a floating panel folds to its title bar and back',
+  fold.after < fold.before / 2 && fold.headSeen && fold.restored === fold.before,
+  `${Math.round(fold.before)} → ${Math.round(fold.after)} → ${Math.round(fold.restored)} px`);
+
+await page.evaluate(async () => { App.resetModel(); await App.whenIdle(); });
+await idle();
+
 /* ---------------- title typography ---------------- */
 console.log('\n-- title --');
 const title = await page.evaluate(() => {

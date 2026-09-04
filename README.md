@@ -137,12 +137,19 @@ and replayed from **Start the guided tour** in the help panel.
   annual metrics take a few seconds.
 - Drag to orbit, right-drag or shift-drag to pan, scroll to zoom. One finger
   orbits and two fingers pan and zoom on a touchscreen.
+- The **hand tool** in the viewport toolbar (or `H`) turns a plain drag into a
+  pan in every view mode and stands the opening-drag down while it is on, so
+  moving the model about cannot nudge a window. **Hold Space** for the same
+  thing without leaving the pointer.
+- On a laptop, `C` clears every floating panel out of the way, and each panel
+  folds to its title bar from the chevron on its right.
 - **Click any dimension label in the viewport to type a new value.** The model
   rebuilds immediately.
 - The two sliders at the bottom scrub time of day and day of year.
 
-**Keyboard:** `1`–`6` metrics · `F` fit · `P` plan view · `R` rays · `D`
-dimensions · `V` values · `H` hide roof · `?` help · `Esc` close.
+**Keyboard:** `1`–`6` metrics · `F` fit · `H` hand tool · `Space` pan while
+held · `C` clean view · `P` plan view · `R` rays · `D` dimensions · `V` values ·
+`O` hide roof · `Ctrl+Z` undo a move · `?` help · `Esc` close.
 
 ### Reading a fully enclosed room
 

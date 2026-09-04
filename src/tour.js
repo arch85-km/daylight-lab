@@ -31,8 +31,10 @@ var TOUR_STEPS = [
   {
     target: '#view', place: 'centre', padding: -140,
     title: 'The model',
-    body: 'Drag to orbit, scroll to zoom, right-drag to pan. Drag any window, skylight or door to ' +
-          'move it along its wall — Ctrl+Z undoes that. Click a dimension label to type an exact size.'
+    body: 'Drag to orbit, scroll to zoom, right-drag to pan — or hold Space, or switch on the hand ' +
+          'tool in the toolbar above, to slide the model around with a plain drag. Drag any window, ' +
+          'skylight or door to move it along its wall — Ctrl+Z undoes that. Click a dimension label ' +
+          'to type an exact size.'
   },
   {
     target: '#rail', place: 'right',

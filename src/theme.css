@@ -324,6 +324,9 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 #view { position: absolute; inset: 0; display: block; touch-action: none; }
 #view.over-aperture { cursor: move; }
 #view.dragging { cursor: grabbing; }
+/* the hand tool: grab everywhere, and it wins over the aperture cursor */
+#view.hand, #view.hand.over-aperture { cursor: grab; }
+#view.grabbing, #view.hand.grabbing { cursor: grabbing; }
 
 /* readout that follows the pointer while an opening is being dragged */
 #dragchip {
@@ -366,11 +369,23 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 }
 .hud-head {
   display: flex; align-items: center; gap: 6px; padding: 6px 9px;
-  border-bottom: 1px solid var(--line-2); cursor: grab; user-select: none;
+  border-bottom: 1px solid var(--line-2); cursor: pointer; user-select: none;
   font-size: 10.5px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2);
 }
-.hud-head:active { cursor: grabbing; }
+.hud-head:hover { color: var(--ink); }
 .hud-head .btn { margin-left: auto; }
+.hud-fold {
+  margin-left: auto; display: flex; padding: 0; border: 0; background: transparent;
+  color: var(--ink-3); cursor: pointer; border-radius: 3px;
+}
+.hud-fold svg { width: 12px; height: 12px; display: block; transition: transform var(--dur); }
+.hud-head:hover .hud-fold { color: var(--ink); }
+.hud.collapsed .hud-body { display: none; }
+.hud.collapsed .hud-head { border-bottom: 0; }
+.hud.collapsed .hud-fold svg { transform: rotate(-90deg); }
+
+/* clean view: nothing but the model and the viewport toolbar */
+#stage.clean #legend, #stage.clean #stats, #stage.clean #solarhud, #stage.clean #timebar { display: none; }
 
 /* legend */
 #legend { top: 12px; right: 12px; width: 190px; }
@@ -597,10 +612,23 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 .climate-lbl { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; font-size: 8px; color: var(--ink-3); text-align: center; font-family: var(--font-num); }
 
 /* ---------- responsive ------------------------------------------------- */
-@media (max-width: 1180px) {
-  #timebar { width: min(460px, calc(100% - 40px)); }
+/* Laptops. A 1366-, 1440- or scaled-1536 screen is the common case for a
+   student, and at 336px the rail alone was taking a quarter of it. */
+@media (max-width: 1600px) {
+  :root { --rail-w: 288px; }
+  #timebar { width: min(460px, calc(100% - 360px)); }
   #legend, #stats { width: 168px; }
   #solarhud { display: none; }
+}
+@media (max-width: 1180px) {
+  #timebar { width: min(460px, calc(100% - 40px)); }
+}
+/* Short viewports: the legend and the statistics share the right-hand edge,
+   so give the legend bar less height rather than let the two collide. */
+@media (max-height: 800px) {
+  #solarhud { display: none; }
+  #legend .lg-bar { min-height: 104px; }
+  #legend .lg-foot { display: none; }
 }
 @media (max-width: 900px) {
   :root { --top-h: 48px; --bot-h: 28px; }

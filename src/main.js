@@ -30,7 +30,7 @@ var App = {
     dims: { room: true, thickness: false, aperture: false, shading: false },
     roofOpacity: 1, hideRoof: true, roofRemoved: false,
     showGlass: true, showGround: true, showSunPath: true, shadows: true,
-    viewMode: '3d',
+    viewMode: '3d', handTool: false, cleanView: false,
     section: { on: false, axis: 'z', pos: 0, flip: false }
   },
   rays: { enabled: false, density: 22, sunSizeDeg: 0.53, length: 2.5, opacity: 0.6, showSpots: true },
@@ -65,6 +65,7 @@ App.init = function () {
 
   buildMetricTabs();
   buildViewTools();
+  initHudFolds();
   UI.build($('#rail'));
   wireGlobalEvents();
   this.loadScenarios();
@@ -1087,7 +1088,9 @@ var ICONS = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   ruler: '<rect x="2" y="8" width="20" height="8" rx="1.5"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/>',
   values: '<path d="M4 7h16M4 12h16M4 17h10"/>',
-  compass: '<circle cx="12" cy="12" r="9"/><polygon points="16 8 10.5 10.5 8 16 13.5 13.5"/>'
+  compass: '<circle cx="12" cy="12" r="9"/><polygon points="16 8 10.5 10.5 8 16 13.5 13.5"/>',
+  hand: '<path d="M9 11V5.6a1.3 1.3 0 0 1 2.6 0V11"/><path d="M11.6 10.6V4.4a1.3 1.3 0 0 1 2.6 0v6.2"/><path d="M14.2 11V6.4a1.3 1.3 0 0 1 2.6 0V14"/><path d="M9 11V9.2a1.3 1.3 0 0 0-2.6 0v4.6c0 3.4 2.3 6.2 5.6 6.2h1c3 0 4.8-2.2 4.8-5.2"/>',
+  clean: '<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/><line x1="3.5" y1="20.5" x2="20.5" y2="3.5"/>'
 };
 function vtBtn(icon, title, onClick, isOn) {
   var b = el('button', {
@@ -1107,12 +1110,15 @@ function buildViewTools() {
     function () { App.setViewMode('plan'); }, function () { return App.display.viewMode === 'plan'; }));
   host.appendChild(vtBtn('elev', 'Elevation', function () { App.setViewMode('elev'); }, function () { return App.display.viewMode === 'elev'; }));
   host.appendChild(el('div', { class: 'vt-sep' }));
+  host.appendChild(vtBtn('hand', 'Pan the model (H) — drag to slide it around the screen. Hold Space for the same thing without leaving the pointer.',
+    function () { App.setHandTool(!App.display.handTool); },
+    function () { return App.display.handTool; }));
   host.appendChild(vtBtn('zoomIn', 'Zoom in', function () { App.zoomBy(0.8); }));
   host.appendChild(vtBtn('zoomOut', 'Zoom out', function () { App.zoomBy(1.25); }));
   host.appendChild(vtBtn('fit', 'Fit the model in view', function () { App.fitView(); }));
   host.appendChild(vtBtn('compass', 'Cycle standard views', function () { App.cycleView(); }));
   host.appendChild(el('div', { class: 'vt-sep' }));
-  host.appendChild(vtBtn('roof', 'Hide the roof (view only — it stays in the calculation)',
+  host.appendChild(vtBtn('roof', 'Hide the roof (O) — view only, it stays in the calculation',
     function () { App.display.hideRoof = !App.display.hideRoof; App.markDirty('visibility'); App.refreshDisplay(); UI.sync(); },
     function () { return App.display.hideRoof; }));
   host.appendChild(vtBtn('sun', 'Solar rays',
@@ -1128,7 +1134,60 @@ function buildViewTools() {
   host.appendChild(vtBtn('values', 'Show values on the workplane',
     function () { App.display.showValues = !App.display.showValues; App.markDirty('labels'); UI.sync(); },
     function () { return App.display.showValues; }));
+  host.appendChild(el('div', { class: 'vt-sep' }));
+  host.appendChild(vtBtn('clean', 'Clean view (C) — hide every floating panel and leave just the model',
+    function () { App.setCleanView(!App.display.cleanView); },
+    function () { return App.display.cleanView; }));
 }
+
+/**
+ * A fold chevron on each floating panel's title bar. On a laptop the four
+ * panels take a quarter of the viewport; folding one leaves its title bar so
+ * it can be brought back without hunting for a menu.
+ */
+function initHudFolds() {
+  ['legend', 'stats', 'solarhud'].forEach(function (id) {
+    var hud = $('#' + id), head = hud && hud.querySelector('.hud-head');
+    if (!head) return;
+    var b = el('button', {
+      class: 'hud-fold', type: 'button', title: 'Collapse', 'aria-label': 'Collapse panel',
+      html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" ' +
+        'stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
+    });
+    head.appendChild(b);
+    head.addEventListener('click', function () {
+      var off = hud.classList.toggle('collapsed');
+      b.title = off ? 'Expand' : 'Collapse';
+      App.dirty.labels = true;
+    });
+  });
+}
+
+/* --- viewport navigation -------------------------------------------------- */
+
+/**
+ * The hand tool. While it is on a plain left-drag pans, and aperture dragging
+ * stands down so navigating cannot nudge a window by accident.
+ */
+App.setHandTool = function (on) {
+  this.display.handTool = !!on;
+  this.view.ctl.setHand(!!on);
+  UI.sync();
+};
+/** Space held: pan for as long as it is down, without changing the toggle. */
+App.setHandTemp = function (on) {
+  if (this.view.ctl.handTemp === !!on) return;
+  this.view.ctl.setHandTemp(!!on);
+};
+
+/** Clean view: every floating overlay out of the way but the toolbar. */
+App.setCleanView = function (on) {
+  this.display.cleanView = !!on;
+  $('#stage').classList.toggle('clean', !!on);
+  UI.sync();
+  var self = this;
+  setTimeout(function () { self.dirty.labels = true; }, 20);
+};
 
 /** Zoom step shared by the toolbar buttons and the keyboard. */
 App.zoomBy = function (f) {
@@ -1224,6 +1283,8 @@ App.initApertureDrag = function () {
 
   // OrbitCtl asks first; returning true means we have taken the press
   this.view.ctl.claim = function (e) {
+    // while the hand tool is navigating, nothing in the model is draggable
+    if (self.view.ctl.panning()) return false;
     if (pressIsCameraGesture(e)) return false;
     var hit = self.view.pickAperture(self.model, e.clientX, e.clientY);
     if (!hit) return false;
@@ -1273,6 +1334,7 @@ App.initApertureDrag = function () {
 
 /** Highlight whatever opening the pointer is over. */
 App.updateHover = function (x, y) {
+  if (this.view.ctl.panning()) x = null;   // the hand tool owns the cursor
   var hit = x == null ? null : this.view.pickAperture(this.model, x, y);
   var ap = hit ? hit.aperture : null;
   if (ap === this.hover) return;
@@ -1468,6 +1530,22 @@ function wireGlobalEvents() {
     else if (/\.json$/i.test(f.name)) App.loadModelFile(f);
   });
 
+  // Hold Space to pan — the convention from every drawing application. It is
+  // handled apart from the shortcut table because it needs the key release,
+  // and because Space would otherwise scroll or re-fire a focused button.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== ' ' && e.code !== 'Space') return;
+    if (/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName)) return;
+    e.preventDefault();
+    App.setHandTemp(true);
+  });
+  var releaseSpace = function (e) {
+    if (e && e.type === 'keyup' && e.key !== ' ' && e.code !== 'Space') return;
+    App.setHandTemp(false);
+  };
+  document.addEventListener('keyup', releaseSpace);
+  window.addEventListener('blur', releaseSpace);
+
   document.addEventListener('keydown', function (e) {
     if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     var k = e.key.toLowerCase();
@@ -1487,7 +1565,9 @@ function wireGlobalEvents() {
       App.markDirty('dims'); UI.sync();
     }
     else if (k === 'v') { App.display.showValues = !App.display.showValues; App.markDirty('labels'); UI.sync(); }
-    else if (k === 'h') { App.display.hideRoof = !App.display.hideRoof; App.markDirty('visibility'); App.refreshDisplay(); UI.sync(); }
+    else if (k === 'o') { App.display.hideRoof = !App.display.hideRoof; App.markDirty('visibility'); App.refreshDisplay(); UI.sync(); }
+    else if (k === 'h') App.setHandTool(!App.display.handTool);
+    else if (k === 'c') App.setCleanView(!App.display.cleanView);
     else if (k === '?') App.openInfo('help');
     else if (k >= '1' && k <= '6') App.setMetric(['illuminance', 'df', 'udi', 'da', 'ase', 'sunhours'][+k - 1]);
   });
@@ -1508,7 +1588,6 @@ function startRenderLoop() {
     if (App.animating) App.stepAnimation(dt);
 
     if (App.dirty.sunpath) {
-      var hadSun = App.view.gSun.children.length > 0;
       if (App.display.showSunPath) {
         buildSunPath(App.view.gSun, App.view, App.model, App.sun, { sunSizeDeg: App.rays.sunSizeDeg });
       } else {
@@ -1517,11 +1596,6 @@ function startRenderLoop() {
       App.view.gSun.visible = App.display.showSunPath && App.view.mode === '3d';
       App.dirty.sunpath = false;
       App.dirty.labels = true;
-      // the very first dome appears after the initial frame(), so refit once
-      if (!hadSun && App.view.gSun.children.length && !App._framedWithSun) {
-        App._framedWithSun = true;
-        App.view.frame();
-      }
     }
 
     if (App.dirty.rays) {

@@ -1269,13 +1269,17 @@ var INFO = {
       '<li>Drag in the viewport to orbit, right-drag or shift-drag to pan, scroll to zoom. One finger orbits and two fingers ' +
       'pan and zoom on a touchscreen. In Plan and Elevation the view is locked square-on, so dragging pans instead of ' +
       'orbiting — use the zoom buttons, the wheel, or <b>+</b> and <b>−</b>, and <b>F</b> to fit.</li>' +
+      '<li>The <b>hand tool</b> (the toolbar hand, or <b>H</b>) turns a plain drag into a pan in every view, and stops you ' +
+      'nudging an opening while you are only moving the model about. <b>Hold Space</b> to do the same for as long as the key ' +
+      'is down. On a small screen, <b>C</b> clears every floating panel away, and each panel folds to its title bar from the ' +
+      'chevron on its right.</li>' +
       '<li><b>Drag any window, skylight or door</b> in the viewport to move it. Hold Shift or use the right button to orbit from on top of one, and Ctrl+Z undoes a move.</li>' +
       '<li>Click any <b>dimension label</b> to type a new value. The model rebuilds immediately.</li>' +
       '<li>The two sliders at the bottom scrub time of day and day of year.</li></ul>' +
       '<h3>Suggested sequence for a class</h3><ol>' +
       '<li>Start on <b>Daylight Factor</b> with the default room. Note the mean and the min:mean uniformity.</li>' +
       '<li>Switch the engine to <b>Split-flux</b>. The numbers are close.</li>' +
-      '<li>Add a 0.6 m overhang to the south window. Split-flux does not move; raytraced drops. Discuss why.</li>' +
+      '<li>Add a 0.6 m overhang to the south window. Both engines drop, but raytraced drops further — split-flux only sees the sky the device blocks, never the light it bounces back in. Discuss why.</li>' +
       '<li>Switch to <b>UDI</b>. Watch the “too high” band before and after the overhang.</li>' +
       '<li>Turn on <b>solar rays</b> and scrub the time slider through 21 June and 21 December.</li></ol>' +
       '<h3>What this tool does not model</h3><ul>' +
