@@ -1073,7 +1073,8 @@ ok('the three.js MIT permission notice ships inside the file',
   inHead('Permission is hereby granted') && inHead('three.js authors'),
   'both appear before the first <style>');
 ok("the project's own terms ship inside the file",
-  inHead('CC BY-NC 4.0') && inHead('Karam Al-Obaidi'));
+  inHead('MIT License') && inHead('CC BY 4.0') && inHead('Karam Al-Obaidi'),
+  'MIT for the app, CC BY 4.0 named for the documentation');
 ok('the bundled colour maps are credited', inHead('Apache-2.0'));
 
 // An HTML comment cannot contain "--". If one ever crept into the licence text
@@ -1090,7 +1091,7 @@ const help = await page.evaluate(() => {
   return t;
 });
 ok('the help panel states the licence and credits three.js',
-  /CC BY-NC 4\.0/.test(help) && /three\.js/.test(help) && /MIT/.test(help));
+  /CC BY 4\.0/.test(help) && /three\.js/.test(help) && /MIT/.test(help));
 
 /* console */
 console.log('\n-- console --');

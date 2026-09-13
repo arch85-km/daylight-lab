@@ -1290,9 +1290,9 @@ var INFO = {
       '<p>It is built to teach relationships and orders of magnitude. For a compliance submission, use IESVE, Radiance ' +
       'via Ladybug and Honeybee, or an equivalent validated tool.</p>' +
       '<h3>Licence and credits</h3>' +
-      '<p>© Karam Al-Obaidi. Licensed <b>CC BY-NC 4.0</b> — use, share and adapt it for teaching and study with ' +
-      'attribution; commercial use is not permitted. ' +
-      '<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">creativecommons.org/licenses/by-nc/4.0</a></p>' +
+      '<p>© Karam Al-Obaidi. The app is licensed <b>MIT</b> and the documentation <b>CC BY 4.0</b> — use it, adapt it, ' +
+      'build on it, for any purpose including commercially. Credit is the only condition. ' +
+      '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">creativecommons.org/licenses/by/4.0</a></p>' +
       '<p>Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r160 (MIT), inlined into ' +
       'this file along with its licence. Legend colour maps: viridis, inferno and cividis (CC0), turbo (Google, ' +
       'Apache-2.0). The full notice is at the top of the file itself — view source to read it.</p>'

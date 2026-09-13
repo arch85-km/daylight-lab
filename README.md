@@ -287,7 +287,7 @@ courtesy on top of it.
   year    = {2026},
   version = {1.0.0},
   url     = {https://karam.me.uk/apps/daylight-lab/index.html},
-  note    = {Licensed CC BY-NC 4.0}
+  note    = {MIT licensed}
 }
 ```
 
@@ -307,14 +307,22 @@ comments.
 
 ## Licence
 
-**CC BY-NC 4.0** — [Creative Commons Attribution-NonCommercial 4.0
-International](https://creativecommons.org/licenses/by-nc/4.0/). Use it, share
-it, adapt it for teaching, study and research, with attribution. Commercial use
-is not permitted; ask if you want other terms. Full text and the third-party
-carve-outs are in [`LICENSE`](LICENSE).
+Two licences, because software and writing want different terms. **Both permit
+commercial use. Both ask only for credit.**
 
-The licence notice travels **inside** `daylight-lab.html` itself, because the
-single file is the thing people actually receive.
+| | |
+|---|---|
+| **Software** — `src/`, `tools/`, `test/`, and the built `daylight-lab.html` | **MIT** |
+| **Documentation and teaching material** — this README, `docs/`, the method notes, the exercises, the figures | **[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)** |
+
+Use it, change it, host it, teach with it, build it into something else, sell
+what you build — just keep the credit. The copyright notice embedded in the
+interface, the status bar and every exported image satisfies attribution on its
+own when left in place.
+
+Full text and the third-party carve-outs are in [`LICENSE`](LICENSE). The MIT
+notice travels **inside** `daylight-lab.html` itself, because the single file is
+the thing people actually receive.
 
 ## Credits
 

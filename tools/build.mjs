@@ -83,18 +83,36 @@ const threeLicense = read('vendor/three.LICENSE').trimEnd();
 const noticeBody = `  Daylight Lab — a browser-based daylighting teaching tool
   Copyright © Karam Al-Obaidi
 
-  This work is licensed under the Creative Commons
-  Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
-  https://creativecommons.org/licenses/by-nc/4.0/
+  This file is the software, and it is licensed MIT. The project's
+  documentation — the README, the method notes, the exercises — is
+  licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+  Both permit commercial use; both ask only for credit.
 
-  You may use, share and adapt it for teaching, study and other
-  non-commercial purposes, with attribution. Commercial use is not
-  permitted. Provided as-is, without warranty; built to teach
-  relationships and orders of magnitude, not for compliance work.
+  Provided as-is, without warranty. Built to teach relationships and
+  orders of magnitude, not for compliance work.
+
+  MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a
+  copy of this software and associated documentation files (the "Software"),
+  to deal in the Software without restriction, including without limitation
+  the rights to use, copy, modify, merge, publish, distribute, sublicense,
+  and/or sell copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+  DEALINGS IN THE SOFTWARE.
 
   ==================================================================
-  THIRD-PARTY — the terms above do NOT cover the following, which is
-  bundled into this file and remains under its own licence:
+  THIRD-PARTY — bundled into this file, under its own licence:
 
   three.js r160 (https://threejs.org)
 
