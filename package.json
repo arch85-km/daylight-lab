@@ -4,7 +4,7 @@
   "private": true,
   "description": "Daylight Lab - browser-based daylighting teaching tool for architecture students. Builds a single self-contained HTML file.",
   "author": "Karam Al-Obaidi",
-  "license": "UNLICENSED",
+  "license": "CC-BY-NC-4.0",
   "type": "module",
   "scripts": {
     "build": "node tools/build.mjs",

@@ -4,6 +4,51 @@
 <meta name="description" content="Interactive daylighting analysis for architecture students — illuminance, daylight factor and useful daylight illuminance on a workplane grid, with a 3D sun path, shadows and solar ray access.">
 <meta name="author" content="Karam Al-Obaidi">
 <!--
+  Daylight Lab — a browser-based daylighting teaching tool
+  Copyright © Karam Al-Obaidi
+
+  This work is licensed under the Creative Commons
+  Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
+  https://creativecommons.org/licenses/by-nc/4.0/
+
+  You may use, share and adapt it for teaching, study and other
+  non-commercial purposes, with attribution. Commercial use is not
+  permitted. Provided as-is, without warranty; built to teach
+  relationships and orders of magnitude, not for compliance work.
+
+  ==================================================================
+  THIRD-PARTY — the terms above do NOT cover the following, which is
+  bundled into this file and remains under its own licence:
+
+  three.js r160 (https://threejs.org)
+
+  The MIT License
+
+  Copyright © 2010-2023 three.js authors
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
+  ==================================================================
+
+  Colour maps in the legend are sampled from viridis, inferno and
+  cividis (CC0) and turbo (Anton Mikhailov, Google, Apache-2.0).
+-->
+<!--
   Daylight Lab — a self-contained daylighting teaching tool.
   © Karam Al-Obaidi
 
@@ -22,6 +67,15 @@
 
      A full-width or full-screen page template gives students the most room.
      The app is responsive and works down to phone width on its own.
+
+  TWO THINGS THAT CATCH PEOPLE OUT
+  --------------------------------
+  * WordPress.com's free and Personal plans strip custom HTML and JavaScript.
+    This needs self-hosted WordPress, or a Business plan.
+  * The analysis worker starts from a blob: URL. A strict
+    Content-Security-Policy blocks that; the app then falls back to
+    single-thread mode on its own, so it still works, only slower. The status
+    bar says which mode is active.
 -->
 <style>/* ==========================================================================
    Daylight Lab — theme + layout
@@ -8569,7 +8623,13 @@ var INFO = {
       '<li>Spectral or colour effects.</li></ul>' +
       '<p>It is built to teach relationships and orders of magnitude. For a compliance submission, use IESVE, Radiance ' +
       'via Ladybug and Honeybee, or an equivalent validated tool.</p>' +
-      '<p class="cite">© Karam Al-Obaidi</p>'
+      '<h3>Licence and credits</h3>' +
+      '<p>© Karam Al-Obaidi. Licensed <b>CC BY-NC 4.0</b> — use, share and adapt it for teaching and study with ' +
+      'attribution; commercial use is not permitted. ' +
+      '<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">creativecommons.org/licenses/by-nc/4.0</a></p>' +
+      '<p>Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r160 (MIT), inlined into ' +
+      'this file along with its licence. Legend colour maps: viridis, inferno and cividis (CC0), turbo (Google, ' +
+      'Apache-2.0). The full notice is at the top of the file itself — view source to read it.</p>'
   }
 };
 

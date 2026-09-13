@@ -64,7 +64,61 @@ const style = read('src/theme.css');
 // Nothing in src/ may terminate the inline <script> blocks that carry it.
 const guard = (s) => s.replace(/<\/(script)/gi, '<\\/$1');
 
+/*
+ * The licence notice, carried INSIDE the built file.
+ *
+ * The whole point of shipping one self-contained HTML file is that it travels
+ * alone — emailed, uploaded, pasted into a page. MIT requires the copyright
+ * notice AND the permission notice to accompany every copy, so a LICENSE file
+ * sitting in a repository nobody receives does not discharge it. Kept as a
+ * plain comment at the very top: unminified, ahead of everything, and
+ * impossible to lose by copying the file.
+ *
+ * `--` cannot appear inside an HTML comment, so the three.js text is checked
+ * rather than trusted; it has none today, and a future vendor bump that
+ * introduced one would break the page silently.
+ */
+const threeLicense = read('vendor/three.LICENSE').trimEnd();
+
+const noticeBody = `  Daylight Lab — a browser-based daylighting teaching tool
+  Copyright © Karam Al-Obaidi
+
+  This work is licensed under the Creative Commons
+  Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
+  https://creativecommons.org/licenses/by-nc/4.0/
+
+  You may use, share and adapt it for teaching, study and other
+  non-commercial purposes, with attribution. Commercial use is not
+  permitted. Provided as-is, without warranty; built to teach
+  relationships and orders of magnitude, not for compliance work.
+
+  ==================================================================
+  THIRD-PARTY — the terms above do NOT cover the following, which is
+  bundled into this file and remains under its own licence:
+
+  three.js r160 (https://threejs.org)
+
+${threeLicense.split('\n').map((l) => (l ? '  ' + l : '')).join('\n')}
+  ==================================================================
+
+  Colour maps in the legend are sampled from viridis, inferno and
+  cividis (CC0) and turbo (Anton Mikhailov, Google, Apache-2.0).`;
+
+/*
+ * `--` cannot appear inside an HTML comment. If it did, the notice would
+ * terminate early and spill the rest of itself into the page as markup — so
+ * the ASSEMBLED text is checked, not just the vendor file. A row of hyphens
+ * used as a separator is exactly how this goes wrong, which is how it went
+ * wrong the first time; test/validate.mjs asserts the same thing on the
+ * built file.
+ */
+if (noticeBody.includes('--')) {
+  throw new Error('the licence notice contains "--", which cannot go inside an HTML comment');
+}
+const notice = `<!--\n${noticeBody}\n-->`;
+
 const out = read('src/index.html')
+  .replace('__NOTICE__', () => notice)
   .replace('__STYLE__', () => style)
   .replace('__THREE__', () => guard(three))
   .replace('__WORKER__', () => guard(worker))

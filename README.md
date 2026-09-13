@@ -259,12 +259,32 @@ equivalent validated tool.
 
 ---
 
+## Licence
+
+**CC BY-NC 4.0** — [Creative Commons Attribution-NonCommercial 4.0
+International](https://creativecommons.org/licenses/by-nc/4.0/). Use it, share
+it, adapt it for teaching, study and research, with attribution. Commercial use
+is not permitted; ask if you want other terms. Full text and the third-party
+carve-outs are in [`LICENSE`](LICENSE).
+
+The licence notice travels **inside** `daylight-lab.html` itself, because the
+single file is the thing people actually receive.
+
 ## Credits
 
-Built with [three.js](https://threejs.org) (r160, MIT), inlined into the single
-file. Methods follow Nabil & Mardaljevic (2005) for UDI, Perez et al. (1993) for
-the all-weather sky, CIE S 011 for the standard skies, the NOAA Solar Calculator
-for solar position, BRE/BS 8206-2 for the split-flux components, and IES LM-83
-for sDA and ASE.
+Built with [three.js](https://threejs.org) (r160, **MIT** — full text in
+[`vendor/three.LICENSE`](vendor/three.LICENSE) and reproduced inside the built
+file), inlined so the tool needs no CDN.
+
+Legend colour maps are sampled from **viridis** and **inferno** (Nathaniel J.
+Smith & Stéfan van der Walt, CC0), **cividis** (Nuñez, Anderton & Renslow, CC0)
+and **turbo** (Anton Mikhailov, Google, Apache-2.0).
+
+Methods follow Nabil & Mardaljevic (2005) for UDI, Perez et al. (1993) for the
+all-weather sky and Perez et al. (1990) for luminous efficacy, CIE S 011 for the
+standard skies, Tregenza/Reinhart for the sky subdivision, the NOAA Solar
+Calculator for solar position, BRE/BS 8206-2 for the split-flux components and
+the average daylight factor, and IES LM-83 for sDA and ASE. Those standards are
+cited, not redistributed.
 
 © Karam Al-Obaidi

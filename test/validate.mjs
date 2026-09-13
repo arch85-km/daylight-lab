@@ -8,7 +8,7 @@
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(root, 'test', 'out');
@@ -1055,6 +1055,42 @@ ok('export produces PNG, CSV and JSON downloads',
 
 const copyright = await page.evaluate(() => document.getElementById('copyright').textContent.trim());
 ok('copyright shown bottom-left', copyright === '© Karam Al-Obaidi', copyright);
+
+/* licence */
+console.log('\n-- licence --');
+
+// MIT requires the copyright notice AND the permission notice to accompany
+// every copy. The single file IS the copy people receive, so the notice has to
+// live inside it — a LICENSE file in a repository nobody clones does not
+// discharge the condition.
+const built = readFileSync(join(root, 'daylight-lab.html'), 'utf8');
+const headEnd = built.indexOf('<style>');
+const inHead = (needle) => {
+  const i = built.indexOf(needle);
+  return i >= 0 && i < headEnd;
+};
+ok('the three.js MIT permission notice ships inside the file',
+  inHead('Permission is hereby granted') && inHead('three.js authors'),
+  'both appear before the first <style>');
+ok("the project's own terms ship inside the file",
+  inHead('CC BY-NC 4.0') && inHead('Karam Al-Obaidi'));
+ok('the bundled colour maps are credited', inHead('Apache-2.0'));
+
+// An HTML comment cannot contain "--". If one ever crept into the licence text
+// the notice would terminate early and spill the rest into the page as markup.
+const open = built.indexOf('<!--');
+const inner = built.slice(open + 4, built.indexOf('-->', open));
+ok('the notice comment cannot terminate early', !inner.includes('--'),
+  inner.length + ' characters, no stray double hyphen');
+
+const help = await page.evaluate(() => {
+  document.getElementById('btn-help').click();
+  const t = document.getElementById('modal-body').textContent;
+  closeModal();
+  return t;
+});
+ok('the help panel states the licence and credits three.js',
+  /CC BY-NC 4\.0/.test(help) && /three\.js/.test(help) && /MIT/.test(help));
 
 /* console */
 console.log('\n-- console --');

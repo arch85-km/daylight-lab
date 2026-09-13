@@ -3,6 +3,7 @@
 <title>Daylight Lab</title>
 <meta name="description" content="Interactive daylighting analysis for architecture students — illuminance, daylight factor and useful daylight illuminance on a workplane grid, with a 3D sun path, shadows and solar ray access.">
 <meta name="author" content="Karam Al-Obaidi">
+__NOTICE__
 <!--
   Daylight Lab — a self-contained daylighting teaching tool.
   © Karam Al-Obaidi
@@ -22,6 +23,15 @@
 
      A full-width or full-screen page template gives students the most room.
      The app is responsive and works down to phone width on its own.
+
+  TWO THINGS THAT CATCH PEOPLE OUT
+  --------------------------------
+  * WordPress.com's free and Personal plans strip custom HTML and JavaScript.
+    This needs self-hosted WordPress, or a Business plan.
+  * The analysis worker starts from a blob: URL. A strict
+    Content-Security-Policy blocks that; the app then falls back to
+    single-thread mode on its own, so it still works, only slower. The status
+    bar says which mode is active.
 -->
 <style>__STYLE__</style>
 

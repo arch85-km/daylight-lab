@@ -1,0 +1,80 @@
+Daylight Lab — a browser-based daylighting teaching tool
+Copyright © Karam Al-Obaidi
+
+================================================================================
+THIS WORK
+================================================================================
+
+Licensed under the Creative Commons Attribution-NonCommercial 4.0
+International License (CC BY-NC 4.0).
+
+    https://creativecommons.org/licenses/by-nc/4.0/
+
+In plain terms — this summary is a convenience, not a substitute for the
+licence text at the link above:
+
+  YOU MAY
+    - use the tool, and run it on your own site
+    - share it, in any medium or format
+    - adapt it: remix, transform, and build upon it
+    - do the above for teaching, study, research and other non-commercial
+      purposes
+
+  PROVIDED THAT
+    - Attribution. You give appropriate credit to Karam Al-Obaidi, link to
+      this licence, and indicate if changes were made. The copyright notice
+      already embedded in the interface, the status bar and every exported
+      image satisfies this when left in place.
+    - NonCommercial. You may not use the material for commercial purposes.
+      Charging for a course that uses the tool as one teaching resource is
+      not the same as selling the tool; if you are unsure whether your use is
+      commercial, ask.
+
+  NO WARRANTY
+    The tool is provided as-is, without warranty of any kind. It is built to
+    teach relationships and orders of magnitude. It is NOT validated for
+    regulatory or compliance work — see docs/ENGINE-VALIDATION.md for its
+    measured accuracy and its limits, and use IESVE, Radiance via Ladybug and
+    Honeybee, or an equivalent validated tool for a submission.
+
+Requests for commercial use, or for terms other than these, are welcome —
+contact the author.
+
+================================================================================
+THIRD-PARTY COMPONENTS
+================================================================================
+
+The terms above cover this project's own source. They do NOT cover the
+following, which carry their own licences and remain under them:
+
+  three.js (r160) — vendor/three.min.js, inlined into daylight-lab.html
+    Copyright © 2010-2023 three.js authors
+    MIT License. Full text: vendor/three.LICENSE, and reproduced inside
+    daylight-lab.html itself so that it travels with the single file.
+    https://threejs.org
+
+  Colour maps in src/legend.js, sampled as a handful of sRGB stops:
+    viridis, inferno    Nathaniel J. Smith & Stéfan van der Walt — CC0
+    cividis             Nuñez, Anderton & Renslow — CC0
+    turbo               Anton Mikhailov, Google — Apache License 2.0
+                        https://www.apache.org/licenses/LICENSE-2.0
+
+No fonts are bundled; the interface uses CSS font stacks only.
+
+================================================================================
+METHODS
+================================================================================
+
+Implementing a published method is not reproducing the document that
+describes it, and the standards below are cited, not redistributed. Consult
+the originals for authoritative wording:
+
+  CIE S 011            standard general skies
+  Perez et al. (1993)  all-weather sky model
+  Perez et al. (1990)  luminous efficacy (simplified fit)
+  Tregenza & Reinhart  sky subdivision
+  NOAA Solar Calculator, after Meeus — solar position
+  BRE and BS 8206-2    split-flux components, average daylight factor
+  Nabil & Mardaljevic (2005) — useful daylight illuminance
+  IES LM-83            sDA and ASE (indicative only; blind operation is not
+                       modelled, so results are not LM-83 submissions)
