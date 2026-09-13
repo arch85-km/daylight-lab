@@ -268,14 +268,14 @@ courtesy on top of it.
 
 **APA 7**
 
-> Al-Obaidi, K. (2026). *Daylight Lab: a browser-based daylighting teaching
-> tool* (Version 1.0.0) [Computer software].
+> Al-Obaidi, K. (2026). *Daylight Lab: a browser-based daylighting tool*
+> (Version 1.0.0) [Computer software].
 > https://karam.me.uk/apps/daylight-lab/index.html
 
 **Harvard**
 
-> Al-Obaidi, K. (2026) *Daylight Lab: a browser-based daylighting teaching
-> tool* (Version 1.0.0). Available at:
+> Al-Obaidi, K. (2026) *Daylight Lab: a browser-based daylighting tool*
+> (Version 1.0.0). Available at:
 > https://karam.me.uk/apps/daylight-lab/index.html
 
 **BibTeX**
@@ -283,7 +283,7 @@ courtesy on top of it.
 ```bibtex
 @software{alobaidi2026daylightlab,
   author  = {Al-Obaidi, Karam},
-  title   = {Daylight Lab: a browser-based daylighting teaching tool},
+  title   = {Daylight Lab: a browser-based daylighting tool},
   year    = {2026},
   version = {1.0.0},
   url     = {https://karam.me.uk/apps/daylight-lab/index.html},
