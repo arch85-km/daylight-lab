@@ -3,8 +3,9 @@
      Paste into an Elementor "HTML" widget (Elements > HTML).
 
      Everything is scoped to .dl-doc, so nothing here can touch the rest of
-     your theme. Headings and body text inherit your site's font; only the
-     data — formulas, tables, the BibTeX block — is forced to monospace.
+     your theme. Body text inherits your site's font and headings are set to
+     Poppins to match the site's own headings (--dl-fd, one line to change);
+     only the data — formulas, tables, the BibTeX block — is monospace.
      To follow the visitor's dark-mode setting, change the opening tag to
      <div class="dl-doc dl-auto-dark">. Default is light only, which is the
      safe choice on a light site.
@@ -26,10 +27,15 @@
      The monospace stack must NOT inherit: the table number columns use
      font-variant-numeric:tabular-nums and align on fixed-width digits, and the
      formulas and BibTeX block depend on their spacing. */
-  /* Headings sit at 600, not 700/800: a theme that ships only 400/500/600 —
-     as this one does — has no heavier face, and the browser would either drop
-     to 600 anyway or synthesise a smeared one. Size carries the hierarchy. */
-  --dl-fd:inherit;
+  /* The site pairs a sans for headings with a serif for body, so the page
+     does the same. Body inherits — CSS has no way to inherit "the theme's
+     HEADING font", so that one is named. If the site's heading face ever
+     changes, this is the single line to update.
+     Weights sit at 600 throughout: the site ships Poppins 400/500/600 and
+     Source Serif 4 400/600, so 700 and 800 do not exist and the browser
+     would either drop to 600 or synthesise a smeared bold. Size carries the
+     hierarchy instead. */
+  --dl-fd:"Poppins",system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
   --dl-fb:inherit;
   --dl-fm:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --dl-measure:90ch; --dl-rail:4.75rem;
