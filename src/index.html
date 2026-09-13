@@ -1,0 +1,150 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Daylight Lab</title>
+<meta name="description" content="Interactive daylighting analysis for architecture students — illuminance, daylight factor and useful daylight illuminance on a workplane grid, with a 3D sun path, shadows and solar ray access.">
+<meta name="author" content="Karam Al-Obaidi">
+__NOTICE__
+<!--
+  Daylight Lab — a self-contained daylighting teaching tool.
+  © Karam Al-Obaidi
+
+  WORDPRESS EMBED
+  ---------------
+  1. Upload this file to your server, e.g. /wp-content/uploads/daylight-lab.html
+     (the Media Library blocks .html by default — use FTP or your host's file
+     manager, or a plugin that permits HTML uploads).
+  2. Add a Custom HTML block to any page containing:
+
+       <div style="position:relative;width:100%;height:0;padding-bottom:66%;min-height:520px;">
+         <iframe src="/wp-content/uploads/daylight-lab.html"
+                 style="position:absolute;inset:0;width:100%;height:100%;border:0;"
+                 loading="lazy" title="Daylight Lab"></iframe>
+       </div>
+
+     A full-width or full-screen page template gives students the most room.
+     The app is responsive and works down to phone width on its own.
+
+  TWO THINGS THAT CATCH PEOPLE OUT
+  --------------------------------
+  * WordPress.com's free and Personal plans strip custom HTML and JavaScript.
+    This needs self-hosted WordPress, or a Business plan.
+  * The analysis worker starts from a blob: URL. A strict
+    Content-Security-Policy blocks that; the app then falls back to
+    single-thread mode on its own, so it still works, only slower. The status
+    bar says which mode is active.
+-->
+<style>__STYLE__</style>
+
+<div id="app">
+  <div id="topbar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4.2" fill="#fff" stroke="none"/>
+          <path d="M12 1.6v2.6M12 19.8v2.6M22.4 12h-2.6M4.2 12H1.6M19.4 4.6l-1.9 1.9M6.5 17.5l-1.9 1.9M19.4 19.4l-1.9-1.9M6.5 6.5L4.6 4.6"/>
+        </svg>
+      </div>
+      <div class="brand-txt"><b>Daylight Lab</b><span>Daylighting analysis</span></div>
+    </div>
+
+    <div class="topbar-sep"></div>
+    <div class="metric-tabs" id="metric-tabs" role="tablist"></div>
+
+    <div class="topbar-spacer"></div>
+
+    <button class="btn primary" id="btn-run" title="Recalculate the workplane grid">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+      <span id="btn-run-label">Calculate</span>
+    </button>
+    <button class="btn icon" id="btn-export" title="Export image, CSV or model">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+    <button class="btn icon" id="btn-help" title="How to use this tool">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.2 9.2a2.9 2.9 0 1 1 4 2.7c-.8.4-1.2 1-1.2 1.9v.4"/><circle cx="12" cy="17.4" r="1.05" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </div>
+
+  <div id="rail"></div>
+
+  <div id="stage">
+    <canvas id="view"></canvas>
+    <div id="labels"></div>
+
+    <button id="rail-toggle" title="Show or hide the toolbar" aria-label="Toggle toolbar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+
+    <div id="viewtools" class="hud"></div>
+
+    <div id="legend" class="hud">
+      <div class="hud-head"><span>Legend</span></div>
+      <div class="hud-body" id="legend-body"></div>
+    </div>
+
+    <div id="stats" class="hud">
+      <div class="hud-head"><span>Statistics</span></div>
+      <div class="hud-body" id="stats-body"></div>
+    </div>
+
+    <div id="solarhud" class="hud">
+      <div class="hud-head"><span>Solar</span></div>
+      <div class="hud-body" id="solar-body"></div>
+    </div>
+
+    <div id="timebar" class="hud">
+      <div class="tb-top">
+        <span class="tb-lbl" id="tb-date">21 Jun</span>
+        <span class="tb-lbl" id="tb-time">12:00</span>
+        <span class="tb-sun" id="tb-sun"></span>
+      </div>
+      <div class="track-wrap">
+        <div class="track-day"><i id="tb-daylight"></i></div>
+        <input type="range" id="tb-hour" min="0" max="1439" step="5" value="720" aria-label="Time of day">
+      </div>
+      <input type="range" id="tb-doy" min="1" max="365" step="1" value="172" aria-label="Day of year" style="margin-top:2px">
+    </div>
+
+    <div id="dimedit" class="hud">
+      <input type="number" id="dimedit-input" step="0.05" aria-label="Dimension value">
+      <span class="u" id="dimedit-unit">m</span>
+      <button class="btn sm primary" id="dimedit-ok">Set</button>
+    </div>
+
+    <div id="dragchip"></div>
+    <div id="toast"></div>
+    <div id="progress"><i></i></div>
+  </div>
+
+  <div id="botbar">
+    <span id="copyright">© Karam Al-Obaidi</span>
+    <span class="bb-sep"></span>
+    <span class="bb-item" id="bb-model">—</span>
+    <span class="bb-sep bb-item opt"></span>
+    <span class="bb-item opt" id="bb-grid">—</span>
+    <span class="bb-sep bb-item opt"></span>
+    <span class="bb-item opt" id="bb-engine">—</span>
+    <span class="bb-spacer"></span>
+    <span class="bb-item opt" id="bb-roof">—</span>
+    <span class="bb-sep"></span>
+    <span class="bb-status"><i class="dot" id="bb-dot"></i><span id="bb-status">Starting</span></span>
+  </div>
+</div>
+
+<div id="modal-bg">
+  <div id="modal" role="dialog" aria-modal="true">
+    <div class="m-head">
+      <h2 id="modal-title">—</h2>
+      <button class="btn icon" id="modal-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="m-body" id="modal-body"></div>
+  </div>
+</div>
+
+<input type="file" id="file-epw" accept=".epw,.EPW" hidden>
+<input type="file" id="file-json" accept=".json,application/json" hidden>
+
+<script id="worker-src" type="text/plain">__WORKER__</script>
+<script>__THREE__</script>
+<script>__APP__</script>
