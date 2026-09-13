@@ -13,6 +13,10 @@
    ========================================================================== */
 
 var TOUR_KEY = 'daylightlab.tour.v1';
+// The tour opens on every launch — students meet this app once a term and
+// rarely remember it. TOUR_HIDE_KEY is the only thing that stops it, and only
+// the student's own tick in the card sets it.
+var TOUR_HIDE_KEY = 'daylightlab.tour.hide.v1';
 
 var TOUR_STEPS = [
   {
@@ -173,6 +177,7 @@ var Tour = {
     $('#tour-title').textContent = s.title;
     $('#tour-body').textContent = s.body;
     $('#tour-back').disabled = this.i === 0;
+    $('#tour-hide').checked = tourHidden();
     $('#tour-next').textContent = this.i === this.steps.length - 1 ? 'Finish' : 'Next';
 
     var dots = $('#tour-dots');
@@ -224,6 +229,11 @@ function initTour() {
       ]),
       el('h3', { id: 'tour-title' }),
       el('p', { id: 'tour-body' }),
+      el('label', { class: 't-hide', id: 'tour-hide-row' }, [
+        el('input', { type: 'checkbox', id: 'tour-hide',
+          onchange: function () { setTourHidden(this.checked); } }),
+        el('span', { text: "Don't show this on launch" })
+      ]),
       el('div', { class: 't-foot' }, [
         el('div', { id: 'tour-dots', class: 't-dots' }),
         el('button', { class: 'btn sm', id: 'tour-back', text: 'Back',
@@ -257,4 +267,27 @@ function markTourSeen(how) {
   tourSeenMemory = true;
   try { localStorage.setItem(TOUR_KEY, how); return; } catch (e) {}
   try { sessionStorage.setItem(TOUR_KEY, how); } catch (e) {}
+}
+
+/**
+ * "Don't show this on launch". Stored separately from TOUR_KEY so that having
+ * seen the tour never suppresses it — only an explicit tick does. Replaying it
+ * from Help always works, and unticking there brings it back on launch.
+ */
+var tourHiddenMemory = false;
+function tourHidden() {
+  if (tourHiddenMemory) return true;
+  try { if (localStorage.getItem(TOUR_HIDE_KEY)) return true; } catch (e) {}
+  try { if (sessionStorage.getItem(TOUR_HIDE_KEY)) return true; } catch (e) {}
+  return false;
+}
+function setTourHidden(on) {
+  tourHiddenMemory = !!on;
+  if (!on) {
+    try { localStorage.removeItem(TOUR_HIDE_KEY); } catch (e) {}
+    try { sessionStorage.removeItem(TOUR_HIDE_KEY); } catch (e) {}
+    return;
+  }
+  try { localStorage.setItem(TOUR_HIDE_KEY, '1'); return; } catch (e) {}
+  try { sessionStorage.setItem(TOUR_HIDE_KEY, '1'); } catch (e) {}
 }

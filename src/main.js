@@ -83,9 +83,9 @@ App.init = function () {
   this.run();
   startRenderLoop();
 
-  // first visit in this browser: walk the student round the interface once
+  // the tour opens on every launch until the student ticks it away
   initTour();
-  if (!tourSeen()) setTimeout(function () { Tour.start(false); }, 900);
+  if (!tourHidden()) setTimeout(function () { Tour.start(false); }, 900);
 };
 
 /* --- status, toasts, progress -------------------------------------------- */

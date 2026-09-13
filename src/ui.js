@@ -1268,7 +1268,7 @@ var INFO = {
       '<li><b>Calculate</b> re-bakes the grid. It re-runs on its own whenever the geometry changes.</li>' +
       '<li>Drag in the viewport to orbit, right-drag or shift-drag to pan, scroll to zoom. One finger orbits and two fingers ' +
       'pan and zoom on a touchscreen. In Plan and Elevation the view is locked square-on, so dragging pans instead of ' +
-      'orbiting — use the zoom buttons, the wheel, or <b>+</b> and <b>−</b>, and <b>F</b> to fit.</li>' +
+      'orbiting — use the zoom buttons, the wheel, or <b>+</b> and <b>−</b>. <b>Fit</b> (or <b>F</b>) frames the room in the clear part of the viewport and brings it back from anywhere.</li>' +
       '<li>The <b>hand tool</b> — the hand in the viewport toolbar — turns a plain drag into a pan in every view, and stops ' +
       'you nudging an opening while you are only moving the model about. <b>Hold Space</b> to do the same without switching ' +
       'tools, and <b>Esc</b> always puts you back to orbiting. On a small screen, <b>C</b> clears every floating panel away, ' +

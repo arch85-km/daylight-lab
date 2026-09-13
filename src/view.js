@@ -711,22 +711,129 @@ View.prototype.applyVisibility = function (o) {
   this.dirty = true;
 };
 
-/** Frame the model in the perspective camera. */
-View.prototype.frame = function (margin) {
+/**
+ * The part of the canvas that is not under a floating panel.
+ *
+ * The legend, the statistics, the solar readout, the time bar and the viewport
+ * toolbar all sit ON the canvas, so centring the room in the canvas hides a
+ * corner of it behind one of them. Each visible panel pushes in whichever edge
+ * it is nearest; no edge may eat more than a third of the canvas, so a small
+ * window still gets a usable rectangle back.
+ */
+View.prototype.clearRect = function () {
+  var host = this.canvas.parentElement;
+  var c = this.canvas.getBoundingClientRect();   // project() works in canvas px
+  var box = { left: 0, top: 0, right: c.width, bottom: c.height };
+  var gap = 10, lim = 1 / 3;
+  var huds = host.querySelectorAll('.hud');
+  for (var i = 0; i < huds.length; i++) {
+    var n = huds[i];
+    if (!n.offsetParent && getComputedStyle(n).display === 'none') continue;
+    var b = n.getBoundingClientRect();
+    if (b.width < 4 || b.height < 4) continue;
+    var l = b.left - c.left, t = b.top - c.top, rr = b.right - c.left, bb = b.bottom - c.top;
+    // A panel is a band along whichever axis it covers more of: the toolbar is
+    // wide and shallow (a top band) even when it is flush with the left edge,
+    // while the legend is narrow and tall (a right band). Then the nearer of
+    // that axis's two edges is the one it pushes in.
+    if (b.width / c.width >= b.height / c.height) {
+      if (t <= c.height - bb) box.top = Math.max(box.top, bb + gap);
+      else box.bottom = Math.min(box.bottom, t - gap);
+    } else {
+      if (l <= c.width - rr) box.left = Math.max(box.left, rr + gap);
+      else box.right = Math.min(box.right, l - gap);
+    }
+  }
+  box.left = Math.min(box.left, c.width * lim);
+  box.right = Math.max(box.right, c.width * (1 - lim));
+  box.top = Math.min(box.top, c.height * lim);
+  box.bottom = Math.max(box.bottom, c.height * (1 - lim));
+  return {
+    x: box.left, y: box.top,
+    w: Math.max(40, box.right - box.left), h: Math.max(40, box.bottom - box.top),
+    cw: c.width, ch: c.height
+  };
+};
+
+/** Projected pixel bounds of the model's outer box, in canvas coordinates. */
+View.prototype._modelBounds = function (b) {
+  var pr = {}, x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (var i = 0; i < 8; i++) {
+    this.project(i & 1 ? b.x1 : b.x0, i & 2 ? b.y1 : b.y0, i & 4 ? b.z1 : b.z0, pr);
+    if (pr.x < x0) x0 = pr.x; if (pr.x > x1) x1 = pr.x;
+    if (pr.y < y0) y0 = pr.y; if (pr.y > y1) y1 = pr.y;
+  }
+  return { x0: x0, x1: x1, y0: y0, y1: y1, w: x1 - x0, h: y1 - y0,
+           cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+};
+
+/**
+ * Frame the model in the perspective camera.
+ *
+ * Solved against the real projection rather than estimated from a bounding
+ * sphere: aim at the box centre, then repeatedly measure the eight projected
+ * corners and correct the distance and the aim until the room sits centred in
+ * the clear rectangle at the requested fill. Two or three passes converge to
+ * the pixel, and the result is right at any aspect ratio, with any set of
+ * panels showing, and whatever the camera was doing beforehand.
+ *
+ * The sun-path dome is deliberately NOT framed — the room is the subject, and
+ * the dome is allowed to run off the edges as it does in every sun-path tool.
+ */
+View.prototype.frame = function (fill) {
+  this.resize();                       // never fit against a stale canvas size
   var b = this.built ? this.built.outer : { x0: -4, x1: 4, y0: 0, y1: 3, z0: -3, z1: 3 };
-  var r = Math.hypot(b.x1 - b.x0, b.y1 - b.y0, b.z1 - b.z0) / 2;
-  this.ctl.target.set((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2 - 0.2, (b.z0 + b.z1) / 2);
-  // Frame the ROOM, never the sun-path dome. Framing the dome shrinks the
-  // thing being studied to a sixth of the viewport; the dome is allowed to
-  // run off the edges, exactly as it does in every other sun-path tool.
-  var m = margin || 1.15;
-  // the field of view is specified vertically, so on a viewport that is
-  // narrower than it is tall the horizontal angle is what has to hold the room
-  var tan = Math.tan(this.camera.fov * DEG / 2);
-  var a = this.camera.aspect || 1;
-  this.ctl.dist = r / (a < 1 ? tan * a : tan) * m;
+  var span = Math.hypot(b.x1 - b.x0, b.y1 - b.y0, b.z1 - b.z0);
+  if (!(span > 1e-6)) return;          // degenerate bounds: leave the camera be
+  var f = fill || 0.86;                // share of the clear rect the room fills
+  var clear = this.clearRect();
+
+  this.ctl.target.set((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, (b.z0 + b.z1) / 2);
+  this.ctl.dist = clamp(span, this.ctl.minDist, this.ctl.maxDist);
   this.ctl.apply();
+
+  // project() measures through the active camera; in a locked orthographic
+  // view that is not the one being framed, so fall back to the analytic fit.
+  if (this.active !== this.camera) {
+    var tan0 = Math.tan(this.camera.fov * DEG / 2), a0 = this.camera.aspect || 1;
+    this.ctl.dist = clamp(span / 2 / (a0 < 1 ? tan0 * a0 : tan0) / f,
+      this.ctl.minDist, this.ctl.maxDist);
+    this.ctl.apply();
+    this.dirty = true;
+    return;
+  }
+
+  for (var pass = 0; pass < 4; pass++) {
+    var m = this._modelBounds(b);
+    if (!(m.w > 0.01) || !(m.h > 0.01)) break;
+    // perspective size is very nearly inversely proportional to distance
+    var k = Math.max(m.w / (clear.w * f), m.h / (clear.h * f));
+    this.ctl.dist = clamp(this.ctl.dist * k, this.ctl.minDist, this.ctl.maxDist);
+    this.ctl.apply();
+    // then slide the aim so the room lands in the middle of the clear rect
+    m = this._modelBounds(b);
+    var dx = (clear.x + clear.w / 2) - m.cx, dy = (clear.y + clear.h / 2) - m.cy;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(k - 1) < 0.005) break;
+    this._recentre(dx, dy, clear.ch);
+  }
+  // the last distance correction nudges the centre again, so close on a
+  // centring-only pass — Fit should land on the pixel, not near it
+  for (var fin = 0; fin < 2; fin++) {
+    var mf = this._modelBounds(b);
+    var fx = (clear.x + clear.w / 2) - mf.cx, fy = (clear.y + clear.h / 2) - mf.cy;
+    if (Math.abs(fx) < 0.05 && Math.abs(fy) < 0.05) break;
+    this._recentre(fx, fy, clear.ch);
+  }
   this.dirty = true;
+};
+
+/** Slide the aim so the model moves (dx, dy) pixels on screen. */
+View.prototype._recentre = function (dx, dy, canvasH) {
+  var wpp = 2 * this.ctl.dist * Math.tan(this.camera.fov * DEG / 2) / Math.max(1, canvasH);
+  var right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrix, 0);
+  var up = new THREE.Vector3().setFromMatrixColumn(this.camera.matrix, 1);
+  this.ctl.target.addScaledVector(right, -dx * wpp).addScaledVector(up, dy * wpp);
+  this.ctl.apply();
 };
 View.prototype.setStandardView = function (name) {
   var a = { iso: [-0.6, 1.05], top: [0, 0.05], south: [0, Math.PI / 2 - 0.001],

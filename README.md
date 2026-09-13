@@ -128,15 +128,21 @@ any number.
 
 ## Using it
 
-A guided tour runs the first time a student opens the app — nine or ten
-spotlit steps covering the metrics, the model, the toolbar, the legend, the
-statistics, the time sliders and the export. It can be skipped at any point
-and replayed from **Start the guided tour** in the help panel.
+A guided tour opens **every time the app is launched** — nine or ten spotlit
+steps covering the metrics, the model, the toolbar, the legend, the statistics,
+the time sliders and the export. Students meet the tool once a term and rarely
+remember it, so it keeps offering itself. Anyone who has had enough can tick
+**Don't show this on launch** in the tour card; that is the only thing that
+suppresses it, and unticking the same box brings it back. It can be skipped at
+any point and replayed from **Start the guided tour** in the help panel.
 
 - Pick a metric along the top. Illuminance and Daylight Factor are instant; the
   annual metrics take a few seconds.
 - Drag to orbit, right-drag or shift-drag to pan, scroll to zoom. One finger
   orbits and two fingers pan and zoom on a touchscreen.
+- **Fit** (the toolbar's four corners, or `F`) frames the room in the part of
+  the viewport that no floating panel covers, solved against the real
+  projection — it recovers the view from any camera, however lost.
 - The **hand tool** in the viewport toolbar turns a plain drag into a pan in
   every view mode and stands the opening-drag down while it is on, so moving
   the model about cannot nudge a window. **Hold Space** for the same thing

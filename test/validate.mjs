@@ -41,7 +41,7 @@ await idle();
 // the first-run tour puts a modal overlay over everything; dismiss it so the
 // interaction tests below drive the real interface (it gets its own section)
 await page.waitForFunction(() => window.Tour && Tour.active, null, { timeout: 10000 });
-ok('the guided tour runs on a first visit', true);
+ok('the guided tour opens on launch', true);
 await page.evaluate(() => Tour.end(false));
 ok('app boots and produces a first result', true);
 const rail = await page.evaluate(() => ({
@@ -621,17 +621,60 @@ ok('the sun-path dome does not push the camera off the room',
   framing.domeShown && framing.withDome === framing.without,
   `dist ${framing.withDome} m with the dome, ${framing.without} m without`);
 
-const roomShare = await page.evaluate(() => {
-  App.view.frame();
-  const o = App.built.outer, pr = {}, xs = [], ys = [];
-  for (const X of [o.x0, o.x1]) for (const Y of [o.y0, o.y1]) for (const Z of [o.z0, o.z1]) {
-    App.view.project(X, Y, Z, pr); xs.push(pr.x); ys.push(pr.y);
-  }
-  const st = document.getElementById('stage').getBoundingClientRect();
-  return (Math.max(...xs) - Math.min(...xs)) / st.width;
+// Fit must put the room inside the part of the canvas that no floating panel
+// covers, centred there, at every window size — measured through the real
+// projection, not estimated.
+const fits = [];
+for (const [w, h] of [[1901, 930], [1920, 1080], [1600, 900], [1440, 900],
+  [1366, 768], [1024, 768], [915, 925], [768, 1024], [390, 844]]) {
+  await page.setViewportSize({ width: w, height: h });
+  await page.waitForTimeout(120);          // let the ResizeObserver settle first
+  // fit and measure in one turn: a resize landing between the two would
+  // change the projection under the measurement
+  fits.push(await page.evaluate((size) => {
+    App.view.resize(); App.fitView();
+    const c = App.view.clearRect(), m = App.view._modelBounds(App.built.outer);
+    return {
+      size,
+      inside: m.x0 >= c.x - 1 && m.x1 <= c.x + c.w + 1 &&
+              m.y0 >= c.y - 1 && m.y1 <= c.y + c.h + 1,
+      centred: Math.abs(m.cx - (c.x + c.w / 2)) <= 1 &&
+               Math.abs(m.cy - (c.y + c.h / 2)) <= 1,
+      fill: Math.max(m.w / c.w, m.h / c.h),
+      off: [Math.round(m.cx - (c.x + c.w / 2)), Math.round(m.cy - (c.y + c.h / 2))],
+      clear: [Math.round(c.x), Math.round(c.y), Math.round(c.w), Math.round(c.h)],
+      canvas: [Math.round(c.cw), Math.round(c.ch)]
+    };
+  }, `${w}×${h}`));
+}
+await page.setViewportSize({ width: 1440, height: 900 });
+await page.evaluate(() => { App.view.resize(); App.fitView(); });
+const bad = fits.filter((f) => !f.inside || !f.centred);
+ok('Fit centres the room in the clear part of the canvas at every size',
+  bad.length === 0,
+  bad.length ? bad.map((f) => `${f.size} off ${f.off} clear ${f.clear} canvas ${f.canvas}`).join(' | ')
+             : fits.length + ' sizes, all centred');
+ok('a fitted room fills the space it is given',
+  fits.every((f) => f.fill > 0.7),
+  'smallest fill ' + (100 * Math.min(...fits.map((f) => f.fill))).toFixed(0) + '%');
+
+// The complaint that started this: Fit from a wrecked camera must recover.
+const recovered = await page.evaluate(() => {
+  App.view.ctl.dist = App.view.ctl.minDist;              // nose against a wall
+  App.view.ctl.target.set(140, -60, 95);                 // aimed into the void
+  App.view.ctl.theta = 2.9; App.view.ctl.phi = 0.05;
+  App.view.ctl.apply();
+  const lost = App.view._modelBounds(App.built.outer);
+  App.fitView();
+  const c = App.view.clearRect(), m = App.view._modelBounds(App.built.outer);
+  return {
+    wasOff: Math.abs(lost.cx - (c.x + c.w / 2)) > 400,
+    inside: m.x0 >= c.x - 1 && m.x1 <= c.x + c.w + 1 &&
+            m.y0 >= c.y - 1 && m.y1 <= c.y + c.h + 1
+  };
 });
-ok('a fitted room fills at least half the viewport width', roomShare > 0.5,
-  (100 * roomShare).toFixed(0) + '% of the stage width');
+ok('Fit recovers the model from any camera, however lost',
+  recovered.wasOff && recovered.inside);
 
 /** A patch of empty sky, clear of the model and of every floating panel. */
 const emptyPoint = await page.evaluate(() => {
@@ -792,7 +835,7 @@ ok('a step that opens a panel puts it back', tour.openedDuring && tour.closedAft
 ok('finishing closes the tour and records it', !tour.active && tour.flag === 'done', 'flag = ' + tour.flag);
 
 const replay = await page.evaluate(async () => {
-  const auto = tourSeen() === false;              // must be marked as seen by now
+  const stillOpens = !tourHidden();     // seeing it must never suppress it
   document.getElementById('btn-help').click();
   await new Promise((r) => setTimeout(r, 60));
   const btn = document.getElementById('start-tour');
@@ -802,9 +845,35 @@ const replay = await page.evaluate(async () => {
   const running = Tour.active;
   Tour.end(false);
   closeModal();
-  return { auto, had, running };
+  return { stillOpens, had, running };
 });
-ok('the tour does not re-run once it has been seen', !replay.auto);
+ok('having seen the tour does not stop it opening again', replay.stillOpens);
+
+// "Don't show this on launch" is the only thing that suppresses it, and it
+// must be reversible from the same tick box.
+const optOut = await page.evaluate(async () => {
+  Tour.start(true);
+  await new Promise((r) => setTimeout(r, 40));
+  const box = document.getElementById('tour-hide');
+  const shown = !!box && box.offsetParent !== null;
+  const startsUnticked = box && !box.checked;
+  box.click();                                     // tick it
+  const hidden = tourHidden();
+  Tour.end(false);
+  Tour.start(true);                                // Help must still work
+  await new Promise((r) => setTimeout(r, 40));
+  const replayable = Tour.active;
+  const remembersTick = document.getElementById('tour-hide').checked;
+  document.getElementById('tour-hide').click();    // untick
+  const back = !tourHidden();
+  Tour.end(false);
+  return { shown, startsUnticked, hidden, replayable, remembersTick, back };
+});
+ok('the tour offers "Don\'t show this on launch"', optOut.shown && optOut.startsUnticked);
+ok('ticking it suppresses the tour on launch', optOut.hidden);
+ok('Help still replays it while suppressed, with the box ticked',
+  optOut.replayable && optOut.remembersTick);
+ok('unticking it brings the tour back on launch', optOut.back);
 ok('Help offers a replay button that starts the tour', replay.had && replay.running);
 
 const narrow = await page.evaluate(() => {
