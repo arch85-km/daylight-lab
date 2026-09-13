@@ -15,7 +15,7 @@
 <style>
 .dl-doc{
   --dl-paper:#F1F2EE; --dl-surface:#FBFBF9; --dl-surface2:#E8EAE4;
-  --dl-ink:#16191B; --dl-ink2:#4C555A; --dl-ink3:#7A848A;
+  --dl-ink:#16191B; --dl-ink2:#4C555A; --dl-ink3:#5F696E;
   --dl-rule:#D6D9D1; --dl-rule2:#E5E7E1;
   --dl-accent:#1D5A73; --dl-accent-soft:rgba(29,90,115,.10);
   --dl-ok:#3F6B47;  --dl-ok-soft:rgba(63,107,71,.12);
@@ -217,7 +217,7 @@
       is generally assumed to do.
     </p>
     <div class="dl-byline">
-      <span><b>Audience</b> BSc / MSc architecture</span>
+      <span><b>Audience</b> Architecture students and staff</span>
       <span><b>Engines</b> Raytraced daylight coefficients · Split-flux (BRE)</span>
       <span><b>Runs</b> Entirely in the browser</span>
     </div>
@@ -386,7 +386,7 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
     <div class="dl-sechead"><span class="dl-secnum">03</span><h2>What is and isn't modelled</h2></div>
     <div class="dl-secbody">
       <h3>Included</h3>
-      <div class="dl-ledger">
+      <dl class="dl-ledger">
         <div><span class="dl-chip is-in">In</span><dt>Interreflection</dt><dd>Real Monte-Carlo diffuse bounces in the raytraced engine, against each surface's own reflectance, up to the quality tier's bounce limit. Under split-flux it is the BRE <em>average</em> internally reflected component — one uniform number added to every point, so it cannot show a gradient.</dd></div>
         <div><span class="dl-chip is-in">In</span><dt>Surface reflectance</dt><dd>Adjustable 0–0.95 for floor, walls, ceiling, external surfaces and shading devices, plus ground under Site. Reveals automatically follow the wall value. Frame (0.50) and door (0.30) are fixed and not exposed in the interface.</dd></div>
         <div><span class="dl-chip is-in">In</span><dt>Glazing transmittance</dt><dd>Effective τ = glass × maintenance × frame factor, applied along the ray. Default 0.78 × 0.92 = 0.72. Seven presets from clear single (0.90) to translucent (0.20). Glass also carries ρ = 0.08 for interior reflection.</dd></div>
@@ -394,12 +394,12 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         <div><span class="dl-chip is-in">In</span><dt>Construction thickness</dt><dd>Wall, roof and floor thickness generate real reveals and a real skylight well. Both shade the workplane and both are in the raytraced calculation. Glazing position through the reveal is adjustable.</dd></div>
         <div><span class="dl-chip is-in">In</span><dt>Shading devices</dt><dd>Horizontal and vertical, per opening, with depth, thickness, offset, extension, blade count and tilt. Real solids in the raytraced scene; tested by occlusion in split-flux.</dd></div>
         <div><span class="dl-chip is-part">Partly</span><dt>External obstruction</dt><dd>A single obstruction angle, 0–80°, read by the <b>split-flux engine only</b> — in the sky component, the BRE C coefficient and the ADF. The raytraced engine ignores it completely.</dd></div>
-      </div>
+      </dl>
 
       <h3>Not modelled</h3>
       <p>These are the assumptions a student is most likely to make wrongly, because a
         general-purpose daylight simulator would handle them.</p>
-      <div class="dl-ledger">
+      <dl class="dl-ledger">
         <div><span class="dl-chip is-out">Out</span><dt>Context geometry</dt><dd>No surrounding buildings, no trees, no terrain, no courtyard walls. The scene contains the room and nothing else. The obstruction angle above is the only representation of anything outside, and only one engine reads it.</dd></div>
         <div><span class="dl-chip is-out">Out</span><dt>Specular reflection</dt><dd>Every surface is Lambertian. A specular light shelf, a mirrored louvre, a glossy floor or a reflective façade opposite will all be under-predicted, and light-shelf studies in particular will mislead.</dd></div>
         <div><span class="dl-chip is-out">Out</span><dt>Directional glazing</dt><dd>Transmittance is diffuse-equivalent and constant with angle. No Fresnel, no refraction, no angular τ curve, no BSDF, so prismatic glazing, films and complex fenestration cannot be represented.</dd></div>
@@ -409,7 +409,7 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         <div><span class="dl-chip is-out">Out</span><dt>Colour</dt><dd>Photopic and grey throughout. No spectral calculation, no colour bleeding between surfaces, no glazing tint colour — only its transmittance.</dd></div>
         <div><span class="dl-chip is-out">Out</span><dt>Glare</dt><dd>No DGP, no DGI, no luminance-based glare metric of any kind. The “too high” UDI bin is the closest the tool comes, and it is an illuminance proxy, not a glare calculation.</dd></div>
         <div><span class="dl-chip is-part">Note</span><dt>Calendar</dt><dd>The annual run uses a flat 365-day year fixed to 2001 and ignores daylight saving. 29 February in an EPW is skipped.</dd></div>
-      </div>
+      </dl>
     </div>
   </div>
 
@@ -458,13 +458,13 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       </table></div>
 
       <h3>What the browser approximations cost</h3>
-      <div class="dl-ledger">
+      <dl class="dl-ledger">
         <div><span class="dl-chip is-part">−1.1%</span><dt>One sun-disc sample per annual hour</dt><dd>The annual loop takes a single sample, giving a binary shadow with no penumbra. Measured against 16 samples over five hours of a clear June day, mean direct illuminance differs by 1.09%. This is the accuracy floor for ASE and sun hours near a shadow edge.</dd></div>
         <div><span class="dl-chip is-part">up to −20%</span><dt>Bounce truncation</dt><dd>The most significant approximation. In a deliberately bright room (walls and ceiling ρ = 0.9, floor 0.7) going from 4 to 12 bounces raises mean DF by 20%. Shipped tiers use 1–5 bounces, so <b>rooms with very light surfaces are underestimated</b>. Ordinary rooms at ρ ≈ 0.5 converge by 3 bounces. Above ρ ≈ 0.8, use the Fine tier or read the result as a lower bound.</dd></div>
         <div><span class="dl-chip is-part">±0.005</span><dt>Monte-Carlo noise</dt><dd>Standard deviation of the mean DF across five independent bakes at Standard quality. Re-running the same model will not give a bit-identical answer; quote to one decimal place, not three.</dd></div>
         <div><span class="dl-chip is-part">−0.11%</span><dt>Sky subdivision</dt><dd>MF:1 (145 patches) against MF:2 (577). Negligible for teaching purposes.</dd></div>
         <div><span class="dl-chip is-part">1.6%</span><dt>Grid symmetry</dt><dd>Mean left–right discrepancy on a symmetric room; worst single point 7.7%. This is the noise floor, not a bug — it is why you read the field, not individual points.</dd></div>
-      </div>
+      </dl>
 
       <h4>Grid independence</h4>
       <p>Mean DF on the default model: 9.362% at 1 m spacing, 9.347% at 0.5 m, 9.231% at 0.25 m.
@@ -704,13 +704,13 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       citation is the scholarly act on top of that.</p>
     <p class="dl-ref">Al-Obaidi, K. (2026). <i>Daylight Lab: a browser-based daylighting tool</i>
       (Version 1.0.0) [Computer software].
-      https://karam.me.uk/apps/daylight-lab/index.html</p>
+      https://karam.me.uk/applications/daylight-lab/</p>
 <pre>@software{alobaidi2026daylightlab,
   author  = {Al-Obaidi, Karam},
   title   = {Daylight Lab: a browser-based daylighting tool},
   year    = {2026},
   version = {1.0.0},
-  url     = {https://karam.me.uk/apps/daylight-lab/index.html},
+  url     = {https://karam.me.uk/applications/daylight-lab/},
   note    = {MIT licensed}
 }</pre>
     <p>Report the <b>engine</b>, the <b>quality tier</b>, the <b>sky model</b> and the <b>climate
