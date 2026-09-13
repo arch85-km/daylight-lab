@@ -270,13 +270,13 @@ courtesy on top of it.
 
 > Al-Obaidi, K. (2026). *Daylight Lab: a browser-based daylighting tool*
 > (Version 1.0.0) [Computer software].
-> https://karam.me.uk/apps/daylight-lab/index.html
+> https://karam.me.uk/applications/daylight-lab/
 
 **Harvard**
 
 > Al-Obaidi, K. (2026) *Daylight Lab: a browser-based daylighting tool*
 > (Version 1.0.0). Available at:
-> https://karam.me.uk/apps/daylight-lab/index.html
+> https://karam.me.uk/applications/daylight-lab/
 
 **BibTeX**
 
@@ -286,7 +286,7 @@ courtesy on top of it.
   title   = {Daylight Lab: a browser-based daylighting tool},
   year    = {2026},
   version = {1.0.0},
-  url     = {https://karam.me.uk/apps/daylight-lab/index.html},
+  url     = {https://karam.me.uk/applications/daylight-lab/},
   note    = {MIT licensed}
 }
 ```
