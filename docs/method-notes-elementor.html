@@ -26,6 +26,9 @@
      The monospace stack must NOT inherit: the table number columns use
      font-variant-numeric:tabular-nums and align on fixed-width digits, and the
      formulas and BibTeX block depend on their spacing. */
+  /* Headings sit at 600, not 700/800: a theme that ships only 400/500/600 —
+     as this one does — has no heavier face, and the browser would either drop
+     to 600 anyway or synthesise a smeared one. Size carries the hierarchy. */
   --dl-fd:inherit;
   --dl-fb:inherit;
   --dl-fm:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -58,6 +61,10 @@
 .dl-doc a{color:var(--dl-accent);text-decoration:underline;text-underline-offset:2px;}
 .dl-doc a:focus-visible{outline:2px solid var(--dl-accent);outline-offset:3px;}
 .dl-doc code,.dl-doc .dl-mono{font-family:var(--dl-fm);font-size:.855em;}
+/* Inline bold defaults to 700. A site that ships only 400/500/600 has no such
+   face, so the browser either drops to 600 or fakes one by smearing the 400.
+   Pin it to a weight that exists. */
+.dl-doc b,.dl-doc strong{font-weight:600;}
 .dl-doc code{background:var(--dl-accent-soft);color:var(--dl-accent);
   padding:.1em .34em;border-radius:2px;border:0;}
 
@@ -65,7 +72,7 @@
 .dl-doc .dl-masthead{padding:3.5rem 0 2.25rem;border-bottom:2px solid var(--dl-ink);}
 .dl-doc .dl-eyebrow{font-family:var(--dl-fm);font-size:.70rem;font-weight:500;
   letter-spacing:.16em;text-transform:uppercase;color:var(--dl-accent);margin:0 0 1.1rem;}
-.dl-doc h1{font-family:var(--dl-fd);font-weight:800;
+.dl-doc h1{font-family:var(--dl-fd);font-weight:600;
   font-size:clamp(2.1rem,6.2vw,3.35rem);line-height:1.02;letter-spacing:-.028em;
   text-wrap:balance;margin:0 0 1.1rem;color:var(--dl-ink);}
 .dl-doc .dl-standfirst{max-width:var(--dl-measure);font-size:1.14rem;line-height:1.6;
@@ -78,7 +85,7 @@
 /* trap notice */
 .dl-doc .dl-traps{margin:2.5rem 0;border:1px solid var(--dl-rule);
   border-left:4px solid var(--dl-no);background:var(--dl-surface);padding:1.5rem 1.6rem;}
-.dl-doc .dl-traps h2{font-family:var(--dl-fd);font-size:.82rem;font-weight:700;
+.dl-doc .dl-traps h2{font-family:var(--dl-fd);font-size:.82rem;font-weight:600;
   letter-spacing:.1em;text-transform:uppercase;color:var(--dl-no);margin:0 0 .9rem;}
 .dl-doc .dl-traps ol{margin:0;padding-left:1.15rem;display:grid;gap:.6rem;}
 .dl-doc .dl-traps li{max-width:var(--dl-measure);}
@@ -90,7 +97,7 @@
   padding-top:1.4rem;margin-bottom:1.6rem;}
 .dl-doc .dl-secnum{font-family:var(--dl-fm);font-size:.95rem;font-weight:600;
   color:var(--dl-accent);letter-spacing:.02em;font-variant-numeric:tabular-nums;}
-.dl-doc .dl-sechead h2{font-family:var(--dl-fd);font-weight:700;
+.dl-doc .dl-sechead h2{font-family:var(--dl-fd);font-weight:600;
   font-size:clamp(1.45rem,3.3vw,1.95rem);line-height:1.12;letter-spacing:-.02em;
   text-wrap:balance;margin:0;color:var(--dl-ink);}
 .dl-doc .dl-secbody{display:grid;grid-template-columns:var(--dl-rail) minmax(0,1fr);gap:0 1rem;}
