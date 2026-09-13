@@ -3,15 +3,15 @@
      Paste into an Elementor "HTML" widget (Elements > HTML).
 
      Everything is scoped to .dl-doc, so nothing here can touch the rest of
-     your theme. To follow the visitor's dark-mode setting, change the opening
-     tag to <div class="dl-doc dl-auto-dark">. Default is light only, which is
-     the safe choice on a light site.
+     your theme. Headings and body text inherit your site's font; only the
+     data — formulas, tables, the BibTeX block — is forced to monospace.
+     To follow the visitor's dark-mode setting, change the opening tag to
+     <div class="dl-doc dl-auto-dark">. Default is light only, which is the
+     safe choice on a light site.
      © Karam Al-Obaidi
      ========================================================================== -->
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Spectral:ital,wght@0,300;0,400;0,600;1,400&display=swap');
-
 .dl-doc{
   --dl-paper:#F1F2EE; --dl-surface:#FBFBF9; --dl-surface2:#E8EAE4;
   --dl-ink:#16191B; --dl-ink2:#4C555A; --dl-ink3:#7A848A;
@@ -20,10 +20,16 @@
   --dl-ok:#3F6B47;  --dl-ok-soft:rgba(63,107,71,.12);
   --dl-warn:#8A6410;--dl-warn-soft:rgba(138,100,16,.13);
   --dl-no:#8E3A32;  --dl-no-soft:rgba(142,58,50,.11);
-  --dl-fd:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --dl-fb:"Spectral",Georgia,"Times New Roman",serif;
-  --dl-fm:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-  --dl-measure:68ch; --dl-rail:4.75rem;
+  /* Headings and body follow the site's own typeface. `inherit` resolves where
+     it is used — inside .dl-doc, whose parent is the Elementor container — so
+     this keeps working if the theme font ever changes.
+     The monospace stack must NOT inherit: the table number columns use
+     font-variant-numeric:tabular-nums and align on fixed-width digits, and the
+     formulas and BibTeX block depend on their spacing. */
+  --dl-fd:inherit;
+  --dl-fb:inherit;
+  --dl-fm:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --dl-measure:90ch; --dl-rail:4.75rem;
 
   background:var(--dl-paper); color:var(--dl-ink);
   font-family:var(--dl-fb); font-size:17px; line-height:1.65; font-weight:400;
