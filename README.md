@@ -259,6 +259,52 @@ equivalent validated tool.
 
 ---
 
+## How to cite
+
+If the tool informs a paper, a thesis, a lecture or a studio brief, cite it as
+software. Attribution under the licence is a separate thing — keeping the
+copyright notice in the file satisfies that; a citation is the scholarly
+courtesy on top of it.
+
+**APA 7**
+
+> Al-Obaidi, K. (2026). *Daylight Lab: a browser-based daylighting teaching
+> tool* (Version 1.0.0) [Computer software].
+> https://karam.me.uk/apps/daylight-lab/index.html
+
+**Harvard**
+
+> Al-Obaidi, K. (2026) *Daylight Lab: a browser-based daylighting teaching
+> tool* (Version 1.0.0). Available at:
+> https://karam.me.uk/apps/daylight-lab/index.html
+
+**BibTeX**
+
+```bibtex
+@software{alobaidi2026daylightlab,
+  author  = {Al-Obaidi, Karam},
+  title   = {Daylight Lab: a browser-based daylighting teaching tool},
+  year    = {2026},
+  version = {1.0.0},
+  url     = {https://karam.me.uk/apps/daylight-lab/index.html},
+  note    = {Licensed CC BY-NC 4.0}
+}
+```
+
+Anyone reporting results from the tool should also state the **engine**
+(raytraced or split-flux), the **quality tier**, the **sky model** and the
+**climate file**, since all four change the numbers. Every exported image
+carries them in its title block, and the CSV export carries them as header
+comments.
+
+> **Getting a DOI.** A permanent DOI makes the tool far easier to cite, and
+> reviewers prefer one to a bare URL. [Zenodo](https://zenodo.org) mints them
+> free and can watch a GitHub repository, issuing a new DOI for each release.
+> Once minted, add it to the entries above — the DOI then replaces the URL as
+> the thing people quote.
+
+---
+
 ## Licence
 
 **CC BY-NC 4.0** — [Creative Commons Attribution-NonCommercial 4.0
