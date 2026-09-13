@@ -163,6 +163,11 @@
   font-size:.86rem;color:var(--dl-ink2);}
 .dl-doc .dl-footer p{max-width:var(--dl-measure);margin:0 0 .8rem;}
 .dl-doc .dl-cite{font-family:var(--dl-fm);font-size:.78rem;color:var(--dl-ink3);line-height:1.7;}
+.dl-doc .dl-ref{border-left:2px solid var(--dl-rule);padding-left:.95rem;margin:0 0 1rem;
+  max-width:var(--dl-measure);font-size:.92rem;color:var(--dl-ink2);}
+.dl-doc pre{margin:0 0 1rem;padding:.9rem 1rem;background:var(--dl-surface);
+  border:1px solid var(--dl-rule);overflow-x:auto;font-family:var(--dl-fm);
+  font-size:.78rem;line-height:1.6;color:var(--dl-ink);white-space:pre;}
 
 @media (max-width:720px){
   .dl-doc{--dl-rail:0px;font-size:16px;}
@@ -668,12 +673,38 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       something clear it has been said so rather than inferred.</p>
     <p>For a compliance submission, use IESVE, Radiance via Ladybug and Honeybee, or another
       validated tool. This one is built to teach relationships and orders of magnitude.</p>
+    <h3>Licence</h3>
+    <p>© Karam Al-Obaidi. Licensed <b>CC BY-NC 4.0</b> —
+      <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">Creative
+      Commons Attribution-NonCommercial 4.0 International</a>. Use it, share it and adapt it for
+      teaching, study and research, with attribution. Commercial use is not permitted. The tool
+      bundles <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> (MIT), whose
+      notice travels inside the application file itself.</p>
+
+    <h3>How to cite</h3>
+    <p>Cite it as software. Keeping the copyright notice in the file satisfies the licence; a
+      citation is the scholarly act on top of that.</p>
+    <p class="dl-ref">Al-Obaidi, K. (2026). <i>Daylight Lab: a browser-based daylighting teaching
+      tool</i> (Version 1.0.0) [Computer software].
+      https://karam.me.uk/apps/daylight-lab/index.html</p>
+<pre>@software{alobaidi2026daylightlab,
+  author  = {Al-Obaidi, Karam},
+  title   = {Daylight Lab: a browser-based daylighting teaching tool},
+  year    = {2026},
+  version = {1.0.0},
+  url     = {https://karam.me.uk/apps/daylight-lab/index.html},
+  note    = {Licensed CC BY-NC 4.0}
+}</pre>
+    <p>Report the <b>engine</b>, the <b>quality tier</b>, the <b>sky model</b> and the <b>climate
+      file</b> alongside any figure taken from the tool — all four change the numbers, and a value
+      quoted without them cannot be reproduced. Every exported image carries them in its title
+      block, and the CSV export carries them as header comments.</p>
+
     <p class="dl-cite">Methods implemented follow: CIE S 011 (standard general skies) · Perez et al.
       1993 (all-weather sky) · Perez et al. 1990 (luminous efficacy, simplified) · Tregenza &amp;
       Reinhart (sky subdivision) · NOAA Solar Calculator after Meeus (solar position) · BRE and
       BS 8206-2 (split-flux, ADF) · Nabil &amp; Mardaljevic 2005 (UDI) · IES LM-83 (sDA, ASE —
       indicative only).</p>
-    <p class="dl-cite">© Karam Al-Obaidi</p>
   </div>
 
 </div>
