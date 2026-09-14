@@ -228,7 +228,7 @@
   </div>
 
   <div class="dl-traps">
-    <h2>Three things to know before you cite a number</h2>
+    <h2>Four things to know before you cite a number</h2>
     <ol>
       <li><b>The obstruction angle is read by the split-flux engine only.</b> Set it while the
         raytraced engine is selected and nothing changes — the raytracer has no external
@@ -237,6 +237,9 @@
         polished light shelf, a mirrored louvre or a glossy floor will be under-predicted.</li>
       <li><b>sDA and ASE here are not LM-83 results.</b> LM-83 requires modelled blind operation;
         this tool has no blinds and no shading schedule.</li>
+      <li><b>Design sky illuminance does nothing under CIE Clear or CIE Intermediate.</b> Those two
+        skies take their absolute levels from the tool's own clear-sky model instead, and the
+        setting is overwritten. It governs CIE Overcast and Uniform only.</li>
     </ol>
   </div>
 
@@ -305,7 +308,7 @@
         <thead><tr><th>Metric</th><th>Accumulated as</th></tr></thead>
         <tbody>
           <tr><td class="dl-p">UDI</td><td>Hour counted into one of five bins by total illuminance. Displayed as a percentage of occupied hours for a selectable bin combination — the default view is “in range + high”.</td></tr>
-          <tr><td class="dl-p">DA</td><td>Hours where <span class="dl-mono">E ≥ target</span>, as a percentage of occupied hours. <b>sDA</b> is then the percentage of grid points whose DA ≥ 50%.</td></tr>
+          <tr><td class="dl-p">DA</td><td>Hours where <span class="dl-mono">E ≥ target</span>, as a percentage of occupied hours. <b>sDA</b> is then the percentage of grid points whose DA ≥ 50%. LEED v4 awards credit at sDA<sub>300/50%</sub> ≥ 55% and more at ≥ 75%, and asks that it be paired with ASE<sub>1000,250</sub> below 10% of the area — thresholds the tool quotes but cannot certify against, for the reason in the notice above.</td></tr>
           <tr><td class="dl-p">ASE</td><td>Hours where the <em>direct</em> component alone reaches the ASE threshold and the sun is geometrically visible. The headline ASE % is the share of points exceeding the hours threshold.</td></tr>
           <tr><td class="dl-p">Sun hours</td><td>Hours where any unblocked beam reaches the point at all, whatever its magnitude.</td></tr>
         </tbody>
@@ -326,7 +329,7 @@
     <div class="dl-sechead"><span class="dl-secnum">02</span><h2>The sky and sun model</h2></div>
     <div class="dl-secbody">
       <h3>Sky discretisation</h3>
-      <p>The sky vault is divided into Reinhart patches — 145 at MF:1, 577 at MF:2, in both cases
+      <p>The sky vault is divided into Tregenza/Reinhart patches — 145 at MF:1, 577 at MF:2, in both cases
         plus a single ground slot. Row structure at MF:1 is <code>[30, 30, 24, 24, 18, 12, 6]</code>
         with a zenith cap. Because every calculation reduces to a dot product against a
         patch-luminance vector, changing the sky never re-runs the raytracer — one bake serves the
@@ -340,10 +343,10 @@
       <div class="dl-tbl"><table>
         <thead><tr><th>Setting</th><th>Implementation</th><th>Needs the sun</th></tr></thead>
         <tbody>
-          <tr><td class="dl-p">CIE Overcast</td><td>CIE General Sky type 1 (CIE S 011) — the default, and the basis of DF</td><td>No</td></tr>
-          <tr><td class="dl-p">CIE Intermediate</td><td>CIE General Sky type 8</td><td>Yes</td></tr>
-          <tr><td class="dl-p">CIE Clear</td><td>CIE General Sky type 12</td><td>Yes</td></tr>
-          <tr><td class="dl-p">Uniform</td><td>CIE General Sky type 5</td><td>No</td></tr>
+          <tr><td class="dl-p">CIE Overcast</td><td>CIE Standard General Sky type 1 (CIE S 011) — the default, and the basis of DF</td><td>No</td></tr>
+          <tr><td class="dl-p">CIE Intermediate</td><td>CIE Standard General Sky type 8. Levels come from the internal clear-sky model at turbidity 5.0, <b>not</b> from the design sky illuminance</td><td>Yes</td></tr>
+          <tr><td class="dl-p">CIE Clear</td><td>CIE Standard General Sky type 12. Levels come from the internal clear-sky model at turbidity 2.5, <b>not</b> from the design sky illuminance</td><td>Yes</td></tr>
+          <tr><td class="dl-p">Uniform</td><td>CIE Standard General Sky type 5</td><td>No</td></tr>
           <tr><td class="dl-p">Perez (climate)</td><td>Perez et al. 1993 all-weather, driven by hourly DNI and DHI</td><td>Yes</td></tr>
         </tbody>
       </table></div>
@@ -375,13 +378,18 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       <h4>Where the irradiance comes from</h4>
       <p>If you load an EPW, the tool reads direct normal and diffuse horizontal irradiance
         (columns 15 and 16) and the header's location. With no file loaded it synthesises a year
-        from an ASHRAE-style clear-sky model — Kasten &amp; Young air mass, Linke turbidity —
+        from an ASHRAE-style clear-sky model — Kasten &amp; Young air mass, and a turbidity factor
+        that the code varies from 3.0 to 5.0 with the modelled cloud, by a linear rule it names no
+        source for —
         modulated by a seeded random walk of cloudiness at 42% mean cover. The synthetic year is
         deterministic, so results are reproducible, but it is <b>not</b> a real climate and should
         never be cited as one.</p>
-      <p>Watts are converted to lumens by a simplified efficacy fit rather than the full Perez
-        efficacy model: beam efficacy rises from about 75 lm/W at 10° solar altitude to 104 lm/W at
-        70°, while diffuse efficacy sits near 107 lm/W throughout.</p>
+      <p>Watts are converted to lumens by a fitted curve. The code names Perez et al. 1990 but
+        <b>does not implement it</b> — a stand-in takes its place. Beam efficacy rises from about
+        75 lm/W at 10° solar altitude to 104 lm/W at 70°. Diffuse efficacy runs the other way, from
+        125 lm/W under overcast down to 105 lm/W under a clear sky, driven by a single clearness
+        proxy — direct normal irradiance over a fixed 900 W/m², clamped — rather than by the
+        clearness bins the Perez sky itself uses.</p>
     </div>
   </div>
 
@@ -465,9 +473,9 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       <dl class="dl-ledger">
         <div><span class="dl-chip is-part">−1.1%</span><dt>One sun-disc sample per annual hour</dt><dd>The annual loop takes a single sample, giving a binary shadow with no penumbra. Measured against 16 samples over five hours of a clear June day, mean direct illuminance differs by 1.09%. This is the accuracy floor for ASE and sun hours near a shadow edge.</dd></div>
         <div><span class="dl-chip is-part">up to −20%</span><dt>Bounce truncation</dt><dd>The most significant approximation. In a deliberately bright room (walls and ceiling ρ = 0.9, floor 0.7) going from 4 to 12 bounces raises mean DF by 20%. Shipped tiers use 1–5 bounces, so <b>rooms with very light surfaces are underestimated</b>. Ordinary rooms at ρ ≈ 0.5 converge by 3 bounces. Above ρ ≈ 0.8, use the Fine tier or read the result as a lower bound.</dd></div>
-        <div><span class="dl-chip is-part">±0.005</span><dt>Monte-Carlo noise</dt><dd>Standard deviation of the mean DF across five independent bakes at Standard quality. Re-running the same model will not give a bit-identical answer; quote to one decimal place, not three.</dd></div>
+        <div><span class="dl-chip is-part">±0.005</span><dt>Monte-Carlo noise</dt><dd>Standard deviation of the mean DF across five independent bakes at Standard quality. Rays are drawn from a van der Corput / Halton low-discrepancy sequence with a Cranley&ndash;Patterson rotation per point, which suppresses the noise but does not remove it: re-running the same model will not give a bit-identical answer, so quote to one decimal place, not three.</dd></div>
         <div><span class="dl-chip is-part">−0.11%</span><dt>Sky subdivision</dt><dd>MF:1 (145 patches) against MF:2 (577). Negligible for teaching purposes.</dd></div>
-        <div><span class="dl-chip is-part">1.6%</span><dt>Grid symmetry</dt><dd>Mean left–right discrepancy on a symmetric room; worst single point 7.7%. This is the noise floor, not a bug — it is why you read the field, not individual points.</dd></div>
+        <div><span class="dl-chip is-part">1.6%</span><dt>Grid symmetry</dt><dd>Mean left–right discrepancy on a symmetric room; worst single point 7.7%. Geometry is traced through a bounding-volume hierarchy with M&ouml;ller&ndash;Trumbore intersection at each leaf, so the asymmetry is sampling, not geometry. This is the noise floor, not a bug — it is why you read the field, not individual points.</dd></div>
       </dl>
 
       <h4>Grid independence</h4>
@@ -517,7 +525,7 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
           <tr><td>External surfaces</td><td class="dl-d">0.30</td><td class="dl-n">0 – 0.95</td></tr>
           <tr><td>Shading devices</td><td class="dl-d">0.35</td><td class="dl-n">0 – 0.95</td></tr>
         </tbody>
-        <caption>Reflectance presets: Typical office · Light finishes · Dark finishes · Gallery white · Exposed concrete. Reveals follow the wall value automatically.</caption>
+        <caption>Reflectance presets: Typical office · Light finishes · Dark finishes · Gallery white · Exposed concrete. Reveals follow the wall value automatically. These presets, the glazing transmittances below and the quality-tier ray counts are values chosen for the tool; the code names no source for any of them.</caption>
       </table></div>
 
       <h4>Openings — per window, skylight or door</h4>
@@ -558,7 +566,7 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
           <tr><td>Engine</td><td class="dl-d">Raytraced</td><td class="dl-n">Raytraced / Split-flux</td></tr>
           <tr><td>Quality</td><td class="dl-d">Standard</td><td class="dl-n">Preview / Standard / High / Fine</td></tr>
           <tr><td>Sky model</td><td class="dl-d">CIE Overcast</td><td class="dl-n">5 options</td></tr>
-          <tr><td>Design sky illuminance</td><td class="dl-d">10,000 lux</td><td class="dl-n">1,000 – 40,000</td></tr>
+          <tr><td>Design sky illuminance <span class="dl-mono">(overcast and uniform only)</span></td><td class="dl-d">10,000 lux</td><td class="dl-n">1,000 – 40,000</td></tr>
           <tr><td>Target illuminance</td><td class="dl-d">300 lux</td><td class="dl-n">50 – 3,000</td></tr>
           <tr><td>Occupied hours</td><td class="dl-d">08:00 – 18:00</td><td class="dl-n">0 – 24</td></tr>
           <tr><td>UDI thresholds</td><td class="dl-d">150 / 300 / 500 / 3000 lux</td><td class="dl-n">10 – 20,000</td></tr>
@@ -580,9 +588,14 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
   <div class="dl-sec">
     <div class="dl-sechead"><span class="dl-secnum">06</span><h2>Compared with Radiance and DIALux</h2></div>
     <div class="dl-secbody">
+      <p class="dl-note"><b>Provenance of this section.</b> Everything else on this page is read
+        from the source code. This section is not, and cannot be: the code says nothing about how
+        Radiance or DIALux work. What follows draws on published descriptions of those tools, so
+        check it against their own documentation before relying on it. The figures comparing this
+        tool's two engines are measured, and are the exception.</p>
       <h3>Where results should agree</h3>
       <ul>
-        <li><b>Method family.</b> The diffuse calculation is daylight coefficients over Reinhart patches — the same approach as Radiance's <code>rcontrib</code> and the three-phase method. The Perez sky matches <code>gendaylit</code> including its special case for the clearest bin.</li>
+        <li><b>Method family.</b> The diffuse calculation is daylight coefficients over Tregenza/Reinhart patches — the same approach as Radiance's <code>rcontrib</code> and the three-phase method. The Perez sky matches <code>gendaylit</code> including its special case for the clearest bin.</li>
         <li><b>Solar geometry.</b> NOAA/Meeus to 0.1°. No meaningful divergence from any tool.</li>
         <li><b>Simple diffuse cases.</b> An unobstructed point reads 100.00% DF and rectangular roof apertures match closed-form configuration factors to ±0.12%. For a plain rectangular room with matt surfaces under a CIE overcast sky, daylight factors should sit within a few per cent of a well-converged Radiance run.</li>
         <li><b>The hand method.</b> The split-flux ADF agrees with a BS 8206-2 hand calculation because it <em>is</em> that calculation, coefficient table and all.</li>
@@ -729,7 +742,7 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       contributes. These are the sources the code itself names; where it names none &mdash; the glazing
       and reflectance presets among them &mdash; none is listed here either.</p>
     <ul class="dl-refs">
-      <li><b>CIE S 011</b> &mdash; the Standard General Sky. All fifteen types are in the code, four are
+      <li><b>CIE S 011</b> &mdash; the CIE Standard General Sky. All fifteen types are in the code, four are
         offered in the interface, and type 1, the overcast sky, is the basis of every daylight
         factor the tool reports.</li>
       <li>Perez, R. <i>et al.</i> (1993) &mdash; the all-weather sky, used whenever a climate file drives
@@ -746,9 +759,10 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         year the tool falls back on when no EPW is loaded.</li>
       <li><b>ASHRAE</b> clear-sky model &mdash; the shape of that synthetic year, modulated by a seeded
         cloud walk. Deterministic and reproducible, but not a real climate.</li>
-      <li>Perez, R. <i>et al.</i> (1990) &mdash; luminous efficacy. The tool does <em>not</em> implement
-        this model; it uses a simplified fit in its place, rising from about 75 lm/W at 10&deg; solar
-        altitude to 104 lm/W at 70&deg; for the beam, with diffuse held near 107 lm/W.</li>
+      <li>Perez, R. <i>et al.</i> (1990) &mdash; luminous efficacy. Named in the code but <b>not
+        implemented</b>: a fitted curve stands in for it, giving about 75 lm/W at 10&deg; solar
+        altitude rising to 104 lm/W at 70&deg; for the beam, and 125 lm/W under overcast falling to
+        105 lm/W under clear sky for the diffuse.</li>
       <li>Nabil, A. &amp; Mardaljevic, J. (2005), <i>Useful daylight illuminance: a new paradigm for
         assessing daylight in buildings</i>, Lighting Research &amp; Technology 37(1) &mdash; UDI. The
         default five-interval scheme extends their original 100&ndash;2000 lux proposal, which the tool
@@ -762,10 +776,17 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         the C coefficient table [39, 35, 31, 25, 20, 14, 10, 7, 5, 5, 5] in 10&deg; steps. Scaling the
         internally reflected component by the shading devices is this tool's extension, not part of
         the standard.</li>
+      <li><b>Radiance</b> &mdash; named in the code at one point only: the Perez special case for the
+        clearest sky bin is applied as <code>gendaylit</code> applies it. Section 06 compares the two
+        tools more broadly, and that comparison is not drawn from this tool's source &mdash; see the
+        note opening that section.</li>
       <li>M&ouml;ller, T. &amp; Trumbore, B. &mdash; ray&ndash;triangle intersection, used at every leaf of the
         bounding-volume hierarchy.</li>
       <li>van der Corput / Halton low-discrepancy sequences, with Cranley&ndash;Patterson rotation &mdash; the
         sampling scheme that keeps each grid point's rays decorrelated from its neighbours'.</li>
+      <li><b>IESVE</b>, <b>Radiance via Ladybug and Honeybee</b> &mdash; named in the tool's own help
+        text, and repeated in this page's footer, as where to go for a compliance submission. They
+        are signposts, not sources: nothing in the tool is taken from any of them.</li>
       <li><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> &mdash; rendering only;
         it takes no part in the daylight calculation. MIT licensed, and bundled in the file.</li>
     </ul>
