@@ -379,7 +379,9 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       <h4>Where the irradiance comes from</h4>
       <p>If you load an EPW, the tool reads direct normal and diffuse horizontal irradiance
         (columns 15 and 16) and the header's location. With no file loaded it synthesises a year
-        from an ASHRAE-style clear-sky model — Kasten &amp; Young air mass, and a turbidity factor
+        from what the code calls an ASHRAE-style clear-sky model — though the formula is not
+        ASHRAE's, which uses tabulated optical depths and no turbidity term — built from Kasten
+        &amp; Young air mass and a turbidity factor
         that the code varies from 3.0 to 5.0 with the modelled cloud, by a linear rule it names no
         source for —
         modulated by a seeded random walk of cloudiness at 42% mean cover. The synthetic year is
@@ -761,12 +763,16 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       <li>Tregenza, P. R. &amp; Waters, I. M. (1983). &lsquo;Daylight coefficients&rsquo;, <i>Lighting
         Research &amp; Technology</i>, 15(2), pp. 65&ndash;71. &mdash; The daylight-coefficient method the whole
         raytraced engine rests on.</li>
-      <li><span class="dl-chip is-part">check</span>Reinhart, C. F. &amp; Walkenhorst, O. (2001).
-        &lsquo;Validation of dynamic RADIANCE-based daylight simulations for a test office with external
-        blinds&rsquo;, <i>Energy and Buildings</i>, 33(7), pp. 683&ndash;697. &mdash; The MF subdivision that gives
-        145 patches at MF:1 and 577 at MF:2. The code says only &ldquo;Reinhart&rdquo;; the subdivision is
-        attributed variously to this paper, to Reinhart &amp; Herkel (2000), and to the Daysim
-        documentation.</li>
+      <li>Tregenza, P. R. (1987). &lsquo;Subdivision of the sky hemisphere for luminance measurements&rsquo;,
+        <i>Lighting Research &amp; Technology</i>, 19(1), pp. 13&ndash;14. &mdash; The 145-patch subdivision itself,
+        a separate contribution from the 1983 paper above. The code implements it exactly: seven
+        bands of 12&deg; with a half-band cap at the zenith, which is what <code>90/(rows + 0.5)</code>
+        produces.</li>
+      <li>Reinhart, C. F. &amp; Walkenhorst, O. (2001). &lsquo;Validation of dynamic RADIANCE-based daylight
+        simulations for a test office with external blinds&rsquo;, <i>Energy and Buildings</i>, 33(7),
+        pp. 683&ndash;697. &mdash; The MF generalisation of the Tregenza subdivision. MF:1 is Tregenza's 145
+        unchanged; MF:2 quarters each patch to give 577, which is the row structure
+        <code>[60,60,60,60,48,48,48,48,36,36,24,24,12,12]</code> in the code.</li>
       <li><b>NOAA Solar Calculator</b>, NOAA Global Monitoring Laboratory, after Meeus, J. (1998).
         <i>Astronomical Algorithms</i>, 2nd edn. Richmond, VA: Willmann-Bell. &mdash; Solar position in
         its low-precision form: equation of time, nutation, obliquity correction and NOAA's
@@ -775,10 +781,13 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       <li>Kasten, F. &amp; Young, A. T. (1989). &lsquo;Revised optical air mass tables and approximation
         formula&rsquo;, <i>Applied Optics</i>, 28(22), pp. 4735&ndash;4738. &mdash; Relative optical air mass, used
         by the synthetic clear-sky year the tool falls back on when no EPW is loaded.</li>
-      <li><span class="dl-chip is-part">check</span><b>ASHRAE</b> clear-sky irradiance model,
-        <i>ASHRAE Handbook &mdash; Fundamentals</i>. &mdash; The shape of that synthetic year, modulated by a
-        seeded cloud walk. Deterministic and reproducible, but not a real climate. The code says
-        only &ldquo;ASHRAE-style&rdquo;; the edition and chapter could not be determined from it.</li>
+      <li><b>ASHRAE</b> &mdash; <b>no publication is cited here, deliberately.</b> The code calls its
+        fallback &ldquo;ASHRAE-style&rdquo;, but the formula is not ASHRAE's: it extinguishes the beam through a
+        Linke turbidity factor, whereas the ASHRAE Handbook clear-sky model uses tabulated beam and
+        diffuse optical depths and carries no turbidity term at all. The form belongs to the
+        Linke&ndash;Kasten family, and its constants match no publication that could be traced. Treat the
+        synthetic year as the tool's own construction: deterministic and reproducible, but not a
+        real climate and not a standard one.</li>
       <li>Perez, R., Ineichen, P., Seals, R., Michalsky, J. &amp; Stewart, R. (1990). &lsquo;Modeling
         daylight availability and irradiance components from direct and global irradiance&rsquo;,
         <i>Solar Energy</i>, 44(5), pp. 271&ndash;289. &mdash; Named in the code but <b>not implemented</b>: a
@@ -789,12 +798,12 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         assessing daylight in buildings&rsquo;, <i>Lighting Research &amp; Technology</i>, 37(1), pp. 41&ndash;59.
         &mdash; UDI. The default five-interval scheme extends their original 100&ndash;2000 lux proposal, which
         the tool also offers as a preset.</li>
-      <li><span class="dl-chip is-part">check</span><b>IES LM-83</b>. Illuminating Engineering
-        Society, <i>Approved Method: IES Spatial Daylight Autonomy (sDA) and Annual Sunlight
-        Exposure (ASE)</i>. &mdash; sDA and ASE. The tool omits the blind-operation schedule LM-83
-        requires, which is why both are described throughout this page as indicative rather than as
-        submissions. The code names no edition; LM-83-12 was revised as LM-83-23, and the method
-        changed between them.</li>
+      <li><b>IES LM-83-12</b>. Illuminating Engineering Society, <i>Approved Method: IES Spatial
+        Daylight Autonomy (sDA) and Annual Sunlight Exposure (ASE)</i>. &mdash; sDA and ASE. The code
+        names no edition, but pairs LM-83 with LEED v4, and LEED v4 references LM-83-12, so that is
+        the edition implied. LM-83-23 has since revised the method. The tool omits the
+        blind-operation schedule LM-83 requires, which is why both metrics are described throughout
+        this page as indicative rather than as submissions.</li>
       <li><b>LEED v4</b>. U.S. Green Building Council, <i>LEED v4 for Building Design and
         Construction</i>, EQ Credit: Daylight. &mdash; The sDA<sub>300/50%</sub> credit thresholds of 55%
         and 75% quoted in the interface, and the requirement that sDA be paired with an ASE
