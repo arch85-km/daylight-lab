@@ -1085,11 +1085,27 @@ ok('the bundled colour maps are credited', inHead('Apache-2.0'));
  * build they have.
  */
 {
-  const m = built.match(/id="build"[^>]*>([^<]*)</);
+  const m = built.match(/<meta name="build" content="([^"]*)"/);
   const stamp = m ? m[1].trim() : '';
   ok('the build stamp is substituted at build time',
     /^\d{4}-\d{2}-\d{2} \u00b7 [0-9a-f]{6}$/.test(stamp) && !built.includes("__BUILD__"),
     stamp || 'no stamp found');
+
+  /*
+   * And that the Help panel actually renders it. The token is substituted in
+   * openModal(), which is the only path INFO content takes today - but a
+   * refactor that rendered it another way would leak a literal {BUILD} to the
+   * reader, so assert the rendered text rather than the plumbing.
+   */
+  const shown = await page.evaluate(() => {
+    App.openInfo('help');
+    const t = document.getElementById('modal-body').textContent;
+    document.getElementById('modal-bg').classList.remove('on');
+    return t;
+  });
+  ok('the Help panel renders the build stamp',
+    shown.includes(stamp) && !shown.includes('{BUILD}'),
+    stamp);
 }
 
 // An HTML comment cannot contain "--". If one ever crept into the licence text

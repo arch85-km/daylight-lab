@@ -1297,15 +1297,25 @@ var INFO = {
       'this file along with its licence. Legend colour maps: viridis, inferno and cividis (CC0), turbo (Google, ' +
       'Apache-2.0). The full notice is at the top of the file itself — view source to read it.</p>' +
       '<h3>This build</h3>' +
-      '<p>The date and source hash in the bottom bar identify the exact build you are running, and ' +
-      'travel with every image and model you export. Quote them alongside any figure: the engines ' +
-      'have changed before, and two runs of the same model on different builds can differ.</p>'
+      '<p><b>{BUILD}</b> — the date this file was built and a hash of the sources it was built ' +
+      'from. Quote it alongside any figure you publish: the engines have changed before, and two ' +
+      'runs of the same model on different builds can differ.</p>'
   }
 };
 
+/**
+ * Build date and source hash, written into the head by tools/build.mjs. One
+ * substitution point, read rather than duplicated, so nothing can drift.
+ */
+function buildStamp() {
+  var m = document.querySelector('meta[name="build"]');
+  var v = m ? (m.getAttribute('content') || '').trim() : '';
+  return /^\d{4}-\d{2}-\d{2}/.test(v) ? v : 'unknown';
+}
+
 function openModal(title, html) {
   $('#modal-title').textContent = title;
-  $('#modal-body').innerHTML = html;
+  $('#modal-body').innerHTML = html.replace('{BUILD}', buildStamp());
   $('#modal-bg').classList.add('on');
 }
 function closeModal() { $('#modal-bg').classList.remove('on'); }

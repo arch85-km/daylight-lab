@@ -3,6 +3,7 @@
 <title>Daylight Lab</title>
 <meta name="description" content="Interactive daylighting analysis for architecture students — illuminance, daylight factor and useful daylight illuminance on a workplane grid, with a 3D sun path, shadows and solar ray access.">
 <meta name="author" content="Karam Al-Obaidi">
+<meta name="build" content="2026-09-14 · f9ca63">
 <!--
   Daylight Lab — a browser-based daylight simulation tool
   Copyright © Karam Al-Obaidi
@@ -884,8 +885,6 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 
   <div id="botbar">
     <span id="copyright">© Karam Al-Obaidi</span>
-    <span class="bb-sep"></span>
-    <span class="bb-item" id="build" title="Build date and source hash">2026-09-14 · 1f7449</span>
     <span class="bb-sep"></span>
     <span class="bb-item" id="bb-model">—</span>
     <span class="bb-sep bb-item opt"></span>
@@ -6860,18 +6859,6 @@ function traceOut(bvh, mats, ox, oy, oz, dx, dy, dz, hit) {
 
 var COPYRIGHT = '© Karam Al-Obaidi';
 
-/**
- * The build stamp the status bar is showing. Read from the DOM rather than
- * held in a second constant, so there is exactly one place the build script
- * substitutes and no way for the two to disagree. Lazy, because this module
- * is evaluated before the bar exists.
- */
-function buildStamp() {
-  var el = document.getElementById('build');
-  var t = el ? (el.textContent || '').trim() : '';
-  return /^\d{4}-\d{2}-\d{2}/.test(t) ? t : '';
-}
-
 function download(name, blobOrText, mime) {
   var blob = blobOrText instanceof Blob ? blobOrText : new Blob([blobOrText], { type: mime || 'text/plain' });
   var url = URL.createObjectURL(blob);
@@ -7100,9 +7087,7 @@ function drawTitleBlock(g, x, y, w, h, scale, ctx, ink, ink2, ink3, panel, line)
   g.fillText(COPYRIGHT, 16, Y + H - 12);
 
   g.fillStyle = ink3; g.font = '10px system-ui, sans-serif'; g.textAlign = 'right';
-  var bs = buildStamp();
-  g.fillText('Daylight Lab — daylight simulation tool' + (bs ? '  ·  build ' + bs : ''),
-             W - 16, Y + H - 12);
+  g.fillText('Daylight Lab — daylight simulation tool', W - 16, Y + H - 12);
   g.restore();
 }
 function colWMin() { return 220; }
@@ -7110,7 +7095,7 @@ function colWMin() { return 220; }
 /** Model + settings as JSON, round-trippable through loadModelJson(). */
 function exportJson(model, extra) {
   var payload = {
-    app: 'Daylight Lab', version: 1, build: buildStamp(),
+    app: 'Daylight Lab', version: 1,
     exported: new Date().toISOString(),
     copyright: COPYRIGHT,
     model: model
@@ -8687,15 +8672,25 @@ var INFO = {
       'this file along with its licence. Legend colour maps: viridis, inferno and cividis (CC0), turbo (Google, ' +
       'Apache-2.0). The full notice is at the top of the file itself — view source to read it.</p>' +
       '<h3>This build</h3>' +
-      '<p>The date and source hash in the bottom bar identify the exact build you are running, and ' +
-      'travel with every image and model you export. Quote them alongside any figure: the engines ' +
-      'have changed before, and two runs of the same model on different builds can differ.</p>'
+      '<p><b>{BUILD}</b> — the date this file was built and a hash of the sources it was built ' +
+      'from. Quote it alongside any figure you publish: the engines have changed before, and two ' +
+      'runs of the same model on different builds can differ.</p>'
   }
 };
 
+/**
+ * Build date and source hash, written into the head by tools/build.mjs. One
+ * substitution point, read rather than duplicated, so nothing can drift.
+ */
+function buildStamp() {
+  var m = document.querySelector('meta[name="build"]');
+  var v = m ? (m.getAttribute('content') || '').trim() : '';
+  return /^\d{4}-\d{2}-\d{2}/.test(v) ? v : 'unknown';
+}
+
 function openModal(title, html) {
   $('#modal-title').textContent = title;
-  $('#modal-body').innerHTML = html;
+  $('#modal-body').innerHTML = html.replace('{BUILD}', buildStamp());
   $('#modal-bg').classList.add('on');
 }
 function closeModal() { $('#modal-bg').classList.remove('on'); }
