@@ -76,9 +76,10 @@
 
 /* masthead */
 .dl-doc .dl-masthead{padding:3.5rem 0 2.25rem;border-bottom:2px solid var(--dl-ink);}
-.dl-doc .dl-eyebrow{font-family:var(--dl-fm);font-size:.70rem;font-weight:500;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--dl-accent);margin:0 0 1.1rem;}
-.dl-doc h1{font-family:var(--dl-fd);font-weight:600;
+/* The document's own title is an h2, not an h1: the host page supplies the h1,
+   and two of those on one page give a screen reader competing document titles.
+   Styled by class so it keeps the masthead scale regardless of tag. */
+.dl-doc .dl-title{font-family:var(--dl-fd);font-weight:600;
   font-size:clamp(2.1rem,6.2vw,3.35rem);line-height:1.02;letter-spacing:-.028em;
   text-wrap:balance;margin:0 0 1.1rem;color:var(--dl-ink);}
 .dl-doc .dl-standfirst{max-width:var(--dl-measure);font-size:1.14rem;line-height:1.6;
@@ -208,8 +209,7 @@
 <div class="dl-doc">
 
   <div class="dl-masthead">
-    <p class="dl-eyebrow">Method &amp; limitations</p>
-    <h1>Daylight Lab Method Notes</h1>
+    <h2 class="dl-title">Daylight Lab Method Notes</h2>
     <p class="dl-standfirst">
       What this tool computes, how it computes it, and — the part that matters most when you
       cite it — <strong>what it does not model at all</strong>. Everything below is read from the
