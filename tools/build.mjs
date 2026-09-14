@@ -80,7 +80,7 @@ const guard = (s) => s.replace(/<\/(script)/gi, '<\\/$1');
  */
 const threeLicense = read('vendor/three.LICENSE').trimEnd();
 
-const noticeBody = `  Daylight Lab — a browser-based daylighting teaching tool
+const noticeBody = `  Daylight Lab — a browser-based daylight simulation tool
   Copyright © Karam Al-Obaidi
 
   This file is the software, and it is licensed MIT. The project's

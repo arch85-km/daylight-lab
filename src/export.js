@@ -237,7 +237,7 @@ function drawTitleBlock(g, x, y, w, h, scale, ctx, ink, ink2, ink3, panel, line)
   g.fillText(COPYRIGHT, 16, Y + H - 12);
 
   g.fillStyle = ink3; g.font = '10px system-ui, sans-serif'; g.textAlign = 'right';
-  g.fillText('Daylight Lab — daylighting teaching tool', W - 16, Y + H - 12);
+  g.fillText('Daylight Lab — daylight simulation tool', W - 16, Y + H - 12);
   g.restore();
 }
 function colWMin() { return 220; }
