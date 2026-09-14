@@ -183,6 +183,9 @@
   font-size:.86rem;color:var(--dl-ink2);}
 .dl-doc .dl-footer p{max-width:var(--dl-measure);margin:0 0 .8rem;}
 .dl-doc .dl-cite{font-family:var(--dl-fm);font-size:.78rem;color:var(--dl-ink3);line-height:1.7;}
+.dl-doc .dl-refs{max-width:var(--dl-measure);margin:0 0 1.2rem;padding-left:1.15rem;
+  display:grid;gap:.55rem;font-size:.9rem;color:var(--dl-ink2);}
+.dl-doc .dl-refs b{color:var(--dl-ink);font-weight:600;}
 .dl-doc .dl-ref{border-left:2px solid var(--dl-rule);padding-left:.95rem;margin:0 0 1rem;
   max-width:var(--dl-measure);font-size:.92rem;color:var(--dl-ink2);}
 .dl-doc pre{margin:0 0 1rem;padding:.9rem 1rem;background:var(--dl-surface);
@@ -220,6 +223,7 @@
       <span><b>Audience</b> Architecture students and staff</span>
       <span><b>Engines</b> Raytraced daylight coefficients · Split-flux (BRE)</span>
       <span><b>Runs</b> Entirely in the browser</span>
+      <span><b>Updated</b> 14 September 2026</span>
     </div>
   </div>
 
@@ -698,6 +702,8 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       Both permit any use, including commercial, and ask only that you credit the author. The tool
       bundles <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> (also MIT),
       whose notice travels inside the application file itself.</p>
+    <p>A model you make with the tool is <b>yours</b>. Neither licence claims anything over your
+      room, your results or the images you export.</p>
 
     <h3>How to cite</h3>
     <p>Cite it as software. Keeping the copyright notice in the file satisfies the licence; a
@@ -718,11 +724,54 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       quoted without them cannot be reproduced. Every exported image carries them in its title
       block, and the CSV export carries them as header comments.</p>
 
-    <p class="dl-cite">Methods implemented follow: CIE S 011 (standard general skies) · Perez et al.
-      1993 (all-weather sky) · Perez et al. 1990 (luminous efficacy, simplified) · Tregenza &amp;
-      Reinhart (sky subdivision) · NOAA Solar Calculator after Meeus (solar position) · BRE and
-      BS 8206-2 (split-flux, ADF) · Nabil &amp; Mardaljevic 2005 (UDI) · IES LM-83 (sDA, ASE —
-      indicative only).</p>
+    <h3>References</h3>
+    <p>What the sky models, the solar algorithm and the metrics are drawn from, and what each one
+      contributes. These are the sources the code itself names; where it names none &mdash; the glazing
+      and reflectance presets among them &mdash; none is listed here either.</p>
+    <ul class="dl-refs">
+      <li><b>CIE S 011</b> &mdash; the Standard General Sky. All fifteen types are in the code, four are
+        offered in the interface, and type 1, the overcast sky, is the basis of every daylight
+        factor the tool reports.</li>
+      <li>Perez, R. <i>et al.</i> (1993) &mdash; the all-weather sky, used whenever a climate file drives
+        the calculation. The full eight-bin, twenty-coefficient table is present, including the
+        special case for the clearest bin exactly as Radiance's <code>gendaylit</code> applies it.</li>
+      <li>Tregenza, P. &amp; Reinhart, C. &mdash; the sky subdivision, and with it the daylight-coefficient
+        method the whole raytraced engine rests on. MF:1 gives 145 patches, MF:2 gives 577, each
+        plus a ground slot.</li>
+      <li><b>NOAA Solar Calculator</b>, after Meeus, J., <i>Astronomical Algorithms</i> &mdash; solar
+        position in its low-precision form: equation of time, nutation, obliquity correction and
+        NOAA's refraction fit. Checked against published values for four cities and found to agree
+        to 0.1&deg;.</li>
+      <li>Kasten, F. &amp; Young, A. T. &mdash; relative optical air mass, used by the synthetic clear-sky
+        year the tool falls back on when no EPW is loaded.</li>
+      <li><b>ASHRAE</b> clear-sky model &mdash; the shape of that synthetic year, modulated by a seeded
+        cloud walk. Deterministic and reproducible, but not a real climate.</li>
+      <li>Perez, R. <i>et al.</i> (1990) &mdash; luminous efficacy. The tool does <em>not</em> implement
+        this model; it uses a simplified fit in its place, rising from about 75 lm/W at 10&deg; solar
+        altitude to 104 lm/W at 70&deg; for the beam, with diffuse held near 107 lm/W.</li>
+      <li>Nabil, A. &amp; Mardaljevic, J. (2005), <i>Useful daylight illuminance: a new paradigm for
+        assessing daylight in buildings</i>, Lighting Research &amp; Technology 37(1) &mdash; UDI. The
+        default five-interval scheme extends their original 100&ndash;2000 lux proposal, which the tool
+        also offers as a preset.</li>
+      <li><b>IES LM-83</b> &mdash; sDA and ASE. The tool omits the blind-operation schedule LM-83
+        requires, which is why both are described throughout this page as indicative rather than
+        as submissions.</li>
+      <li><b>LEED v4</b> &mdash; the sDA<sub>300/50%</sub> credit thresholds of 55% and 75% quoted in the
+        interface, and the requirement that sDA be paired with an ASE check.</li>
+      <li><b>BS 8206-2</b> and <b>BRE</b> &mdash; the split-flux method, the average daylight factor, and
+        the C coefficient table [39, 35, 31, 25, 20, 14, 10, 7, 5, 5, 5] in 10&deg; steps. Scaling the
+        internally reflected component by the shading devices is this tool's extension, not part of
+        the standard.</li>
+      <li>M&ouml;ller, T. &amp; Trumbore, B. &mdash; ray&ndash;triangle intersection, used at every leaf of the
+        bounding-volume hierarchy.</li>
+      <li>van der Corput / Halton low-discrepancy sequences, with Cranley&ndash;Patterson rotation &mdash; the
+        sampling scheme that keeps each grid point's rays decorrelated from its neighbours'.</li>
+      <li><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> &mdash; rendering only;
+        it takes no part in the daylight calculation. MIT licensed, and bundled in the file.</li>
+    </ul>
+    <p class="dl-cite">These are where the tool's methods come from, not an authority for its
+      results. The accuracy figures in section 04 are measured against closed-form answers, not
+      against any of these sources.</p>
   </div>
 
 </div>
