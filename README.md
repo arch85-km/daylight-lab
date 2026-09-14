@@ -1,6 +1,6 @@
 # Daylight Lab
 
-An interactive daylighting tool for architecture students. A parametric room with
+An interactive daylight simulation tool for architecture students. A parametric room with
 real wall, roof and floor thickness; windows, skylights and doors you can add,
 size and move; horizontal and vertical shading devices; a 3D sun path with
 shadows and visible solar rays; and a workplane grid reporting **illuminance**,
@@ -268,13 +268,13 @@ courtesy on top of it.
 
 **APA 7**
 
-> Al-Obaidi, K. (2026). *Daylight Lab: a browser-based daylighting tool*
+> Al-Obaidi, K. M. (2026). *Daylight Lab: a browser-based daylight simulation tool*
 > (Version 1.0.0) [Computer software].
 > https://karam.me.uk/applications/daylight-lab/
 
 **Harvard**
 
-> Al-Obaidi, K. (2026) *Daylight Lab: a browser-based daylighting tool*
+> Al-Obaidi, K.M. (2026) *Daylight Lab: a browser-based daylight simulation tool*
 > (Version 1.0.0). Available at:
 > https://karam.me.uk/applications/daylight-lab/
 
@@ -282,8 +282,8 @@ courtesy on top of it.
 
 ```bibtex
 @software{alobaidi2026daylightlab,
-  author  = {Al-Obaidi, Karam},
-  title   = {Daylight Lab: a browser-based daylighting tool},
+  author  = {Al-Obaidi, Karam M.},
+  title   = {Daylight Lab: a browser-based daylight simulation tool},
   year    = {2026},
   version = {1.0.0},
   url     = {https://karam.me.uk/applications/daylight-lab/},
