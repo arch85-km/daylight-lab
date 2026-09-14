@@ -885,6 +885,8 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
   <div id="botbar">
     <span id="copyright">© Karam Al-Obaidi</span>
     <span class="bb-sep"></span>
+    <span class="bb-item" id="build" title="Build date and source hash">2026-09-14 · 1f7449</span>
+    <span class="bb-sep"></span>
     <span class="bb-item" id="bb-model">—</span>
     <span class="bb-sep bb-item opt"></span>
     <span class="bb-item opt" id="bb-grid">—</span>
@@ -6858,6 +6860,18 @@ function traceOut(bvh, mats, ox, oy, oz, dx, dy, dz, hit) {
 
 var COPYRIGHT = '© Karam Al-Obaidi';
 
+/**
+ * The build stamp the status bar is showing. Read from the DOM rather than
+ * held in a second constant, so there is exactly one place the build script
+ * substitutes and no way for the two to disagree. Lazy, because this module
+ * is evaluated before the bar exists.
+ */
+function buildStamp() {
+  var el = document.getElementById('build');
+  var t = el ? (el.textContent || '').trim() : '';
+  return /^\d{4}-\d{2}-\d{2}/.test(t) ? t : '';
+}
+
 function download(name, blobOrText, mime) {
   var blob = blobOrText instanceof Blob ? blobOrText : new Blob([blobOrText], { type: mime || 'text/plain' });
   var url = URL.createObjectURL(blob);
@@ -7086,7 +7100,9 @@ function drawTitleBlock(g, x, y, w, h, scale, ctx, ink, ink2, ink3, panel, line)
   g.fillText(COPYRIGHT, 16, Y + H - 12);
 
   g.fillStyle = ink3; g.font = '10px system-ui, sans-serif'; g.textAlign = 'right';
-  g.fillText('Daylight Lab — daylight simulation tool', W - 16, Y + H - 12);
+  var bs = buildStamp();
+  g.fillText('Daylight Lab — daylight simulation tool' + (bs ? '  ·  build ' + bs : ''),
+             W - 16, Y + H - 12);
   g.restore();
 }
 function colWMin() { return 220; }
@@ -7094,7 +7110,7 @@ function colWMin() { return 220; }
 /** Model + settings as JSON, round-trippable through loadModelJson(). */
 function exportJson(model, extra) {
   var payload = {
-    app: 'Daylight Lab', version: 1,
+    app: 'Daylight Lab', version: 1, build: buildStamp(),
     exported: new Date().toISOString(),
     copyright: COPYRIGHT,
     model: model
@@ -8669,7 +8685,11 @@ var INFO = {
       '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">creativecommons.org/licenses/by/4.0</a></p>' +
       '<p>Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r160 (MIT), inlined into ' +
       'this file along with its licence. Legend colour maps: viridis, inferno and cividis (CC0), turbo (Google, ' +
-      'Apache-2.0). The full notice is at the top of the file itself — view source to read it.</p>'
+      'Apache-2.0). The full notice is at the top of the file itself — view source to read it.</p>' +
+      '<h3>This build</h3>' +
+      '<p>The date and source hash in the bottom bar identify the exact build you are running, and ' +
+      'travel with every image and model you export. Quote them alongside any figure: the engines ' +
+      'have changed before, and two runs of the same model on different builds can differ.</p>'
   }
 };
 
