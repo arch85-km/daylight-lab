@@ -298,10 +298,27 @@
      C interpolated from the BRE table, nine published values
      [39, 35, 31, 25, 20, 14, 10, 7, 5] over 0°–80° in 10° steps,
      which the tool pads to 90° with a further 5.</div>
-      <p class="dl-note">One deliberate departure from the textbook: the BRE internally reflected
-        component contains no shading term, so on its own it would not respond to an overhang at
-        all. The tool scales IRC by the same fraction of sky flux the devices remove. This is an
-        extension of BS 8206-2, <em>not</em> part of it, and the tool's own Engine panel says so.</p>
+      <p class="dl-note"><b>The internally reflected component departs from the published method in
+        three ways</b>, none of which is visible in the output unless you go looking.</p>
+      <p class="dl-note"><b>It responds to shading, and the published method does not.</b> The BRE
+        internally reflected component contains no shading term, so on its own it would not move
+        for an overhang at all — and in a deep room, where the IRC dominates the back half, the
+        daylight factor there would look completely unmoved. The tool scales IRC by the same
+        fraction of sky flux the devices remove. This is an extension of BS 8206-2, <em>not</em>
+        part of it, and the tool's own Engine panel says so.</p>
+      <p class="dl-note"><b>Its second term is not the published one.</b> The tool computes
+        <span class="dl-mono">5(ρ_cw − ρ_fw)</span> where BRE has <span class="dl-mono">5·ρ_cw</span>
+        — the ground-reflected light reaching the ceiling and upper walls. On the default room this
+        puts the internally reflected component about <b>10% below</b> what the published formula
+        gives, and the shortfall is stable across the reflectance range, from −9.8% with a dark
+        floor under a bright ceiling to −11.3% on gallery-white surfaces. The code offers no
+        reasoning for it, unlike the shading extension above, which is commented. Correcting it
+        would push split-flux <em>further</em> above the raytracer rather than closer, so the
+        engine-to-engine differences in section 06 would widen, not narrow.</p>
+      <p class="dl-note"><b>Its leading term uses the model's own transmittance.</b> BRE fixes 0.85
+        there; the tool substitutes the effective τ of the glazing actually specified. This is the
+        benign departure — the tool knows its own glass — but it is still a departure, and it means
+        a hand calculation using 0.85 will not reproduce the tool's IRC exactly.</p>
       <p>The statistics panel also reports the BS 8206-2 average daylight factor,
         <code>ADF = T·W·θ / (A(1 − ρ²))</code>, with θ = 90° − obstruction angle. This is a genuine
         hand-calculable cross-check on the grid mean.</p>
@@ -825,7 +842,8 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         39, 35, 31, 25, 20, 14, 10, 7, 5. <b>The tool extends it to 90&deg; with a constant 5</b>, which is
         the tool's own padding, not the source's; physically there is no sky over the floor at 90&deg;
         anyway. Scaling the IRC by the shading devices is also this tool's extension, not part of
-        the method. Originally derived in Hopkinson, R. G., Longmore, J. &amp; Petherbridge, P. (1954).
+        the method, and the tool's second IRC term and leading coefficient both depart from the
+        published formula &mdash; all three departures are set out in section 01. Originally derived in Hopkinson, R. G., Longmore, J. &amp; Petherbridge, P. (1954).
         &lsquo;An empirical formula for the computation of the indirect component of daylight factor&rsquo;,
         <i>Transactions of the Illuminating Engineering Society (London)</i>, 19, pp. 201&ndash;219; also in
         Hopkinson, R. G., Petherbridge, P. &amp; Longmore, J. (1966). <i>Daylighting</i>. London:
