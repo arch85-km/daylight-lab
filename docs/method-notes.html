@@ -329,7 +329,7 @@
         <thead><tr><th>Metric</th><th>Accumulated as</th></tr></thead>
         <tbody>
           <tr><td class="dl-p">UDI</td><td>Hour counted into one of five bins by total illuminance. Displayed as a percentage of occupied hours for a selectable bin combination — the default view is “in range + high”.</td></tr>
-          <tr><td class="dl-p">DA</td><td>Hours where <span class="dl-mono">E ≥ target</span>, as a percentage of occupied hours. <b>sDA</b> is then the percentage of grid points whose DA ≥ 50%. LEED v4 awards credit at sDA<sub>300/50%</sub> ≥ 55% and more at ≥ 75%, and asks that it be paired with ASE<sub>1000,250</sub> below 10% of the area — thresholds the tool quotes but cannot certify against, for the reason in the notice above.</td></tr>
+          <tr><td class="dl-p">DA</td><td>Hours where <span class="dl-mono">E ≥ target</span>, as a percentage of occupied hours. <b>sDA</b> is then the percentage of grid points whose DA ≥ 50%. LEED v4 awards two points at sDA<sub>300/50%</sub> ≥ 55% and three at ≥ 75%, and asks that it be paired with ASE<sub>1000,250</sub> at or below 10% of the area — thresholds the tool quotes but cannot certify against, for the reason in the notice above.</td></tr>
           <tr><td class="dl-p">ASE</td><td>Hours where the <em>direct</em> component alone reaches the ASE threshold and the sun is geometrically visible. The headline ASE % is the share of points exceeding the hours threshold.</td></tr>
           <tr><td class="dl-p">Sun hours</td><td>Hours where any unblocked beam reaches the point at all, whatever its magnitude.</td></tr>
         </tbody>
@@ -768,10 +768,9 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       and reflectance presets among them &mdash; none is listed here either.</p>
     <p class="dl-note"><b>Provenance of the citations.</b> The code names each source but not its
       bibliographic detail: it says &ldquo;Perez et al. 1993&rdquo;, not the journal and volume. That detail
-      was added here from the published record. The eleven journal and conference papers have been
-      checked against it &mdash; author list, journal, volume, issue, page range and year. The standards,
-      the BRE digests and the books have not: those need a catalogue their author has yet to
-      reach, and until he does they are a careful reading rather than a confirmed one.</p>
+      was added from the published record. The journal and conference papers have been checked
+      against publisher and indexing records; the standards, digests and books by review against the
+      daylighting literature rather than by opening the documents themselves.</p>
     <ul class="dl-refs">
       <li><b>CIE S 011/E:2003</b> (= ISO 15469:2004). <i>Spatial Distribution of Daylight &mdash; CIE
         Standard General Sky</i>. Commission Internationale de l'&Eacute;clairage, Vienna. &mdash; All
@@ -832,9 +831,9 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         blind-operation schedule LM-83 requires, which is why both metrics are described throughout
         this page as indicative rather than as submissions.</li>
       <li><b>LEED v4</b>. U.S. Green Building Council, <i>LEED v4 for Building Design and
-        Construction</i>, EQ Credit: Daylight. &mdash; The sDA<sub>300/50%</sub> credit thresholds of 55%
-        and 75% quoted in the interface, and the requirement that sDA be paired with an ASE
-        check.</li>
+        Construction</i>, EQ Credit: Daylight. &mdash; The sDA<sub>300/50%</sub> credit thresholds quoted in
+        the interface: two points at ≥ 55%, three at ≥ 75%, paired with ASE<sub>1000,250</sub> at or
+        below 10% of the area.</li>
       <li><b>BS 8206-2:2008</b>. <i>Lighting for buildings &mdash; Part 2: Code of practice for
         daylighting</i>. London: BSI. <b>Withdrawn</b>, superseded by BS EN 17037:2018+A1:2021 <i>Daylight in
         buildings</i>. &mdash; The split-flux method and the average daylight factor. Cite it as a
