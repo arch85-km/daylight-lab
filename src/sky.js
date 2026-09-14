@@ -171,7 +171,9 @@ function perezRelative(patches, sun, dni, dhi, dayOfYear) {
   var b = k[4] + k[5] * Z + D * (k[6] + k[7] * Z);
   var c, d;
   if (cat === 0) {
-    // Perez's special case for the clearest bin, as in Radiance gendaylit
+    // Perez's alternative expressions for c and d, which apply to the LOWEST
+    // clearness bin (eps <= 1.065, i.e. overcast) rather than the clearest.
+    // Radiance gendaylit branches on the same category. See Delaunay (1994).
     c = Math.exp(Math.pow(D * (k[8] + k[9] * Z), k[10])) - k[11];
     d = -Math.exp(D * (k[12] + k[13] * Z)) + k[14] + D * k[15];
   } else {

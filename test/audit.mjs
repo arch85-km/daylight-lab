@@ -102,7 +102,11 @@ R.analytic = await page.evaluate(() => {
     };
   };
   out.sky = [integ(1), integ(2)];
-  out.exactOvercast = 7 * Math.PI / 9;
+  // The measurement above discretises CIE type 1, so the reference must be
+  // that sky's horizontal integral (2.449541, numerical), not Moon & Spencer's
+  // 7*pi/9 = 2.443461. Comparing against the latter reported a 0.22% error that
+  // was mostly the difference between two sky definitions.
+  out.exactOvercast = 2.449541;
   out.exactUniform = Math.PI;
 
   /*
@@ -347,8 +351,12 @@ for (const r of a.unobstructed) md.push(`| ${r.rays} | ${r.df.toFixed(4)} | ${pc
 md.push('');
 md.push('### 1.2 Sky integrals');
 md.push('');
-md.push('The discretised sky must reproduce the closed-form hemisphere integrals:');
-md.push('`∫L·cosθ·dω = 7π/9·L_z` for the CIE overcast sky and `π·L` for a uniform sky.');
+md.push('The discretised sky must reproduce the hemisphere integrals `∫L·cosθ·dω`:');
+md.push('2.44954·L_z for CIE Standard General Sky type 1, the overcast sky both');
+md.push('engines use, and `π·L` for a uniform sky. Type 1 has no elementary closed');
+md.push('form, so its value is numerical. It is close to — but not — the 7π/9 =');
+md.push('2.44346 of the Moon & Spencer sky, and comparing against that constant is');
+md.push('what previously reported a 0.22% error here that was mostly definitional.');
 md.push('');
 md.push('| Subdivision | Patches | Σω vs 2π | Overcast | Uniform |');
 md.push('|---|---:|---:|---:|---:|');
@@ -456,10 +464,24 @@ md.push('Mean daylight factor from each engine over the same grid. Walls are 0.1
 md.push('the glazing sits at the inner face except in the last row, so the reveal effect');
 md.push('is isolated rather than mixed into every case.');
 md.push('');
-md.push('Split-flux reads systematically **a few per cent above** the raytracer even with');
-md.push('no shading at all — that offset is the baseline to judge the shaded rows');
-md.push('against, not zero. Two things in the split-flux engine were calibrated against');
-md.push('these cases and are worth knowing about:');
+md.push('Split-flux still reads **a few per cent above** the raytracer on side-lit');
+md.push('cases and below it on skylights, so that offset remains the baseline to judge');
+md.push('the shaded rows against rather than zero. It used to be larger. Two defects');
+md.push('that had been partly cancelling each other were corrected together:');
+md.push('');
+md.push('- The internally reflected component computed `5(ρ_cw − ρ_fw)` where BRE has');
+md.push('  `5·ρ_cw`, putting the IRC about 10% low.');
+md.push('- The sky component used the Moon & Spencer distribution `(1 + 2 sin α)/3`');
+md.push('  while the raytracer used CIE type 1 — up to 25% brighter near the horizon,');
+md.push('  a few per cent darker high up, so it biased side-lit cases high and');
+md.push('  skylights low. Both engines now use type 1.');
+md.push('');
+md.push('Fixing only the first would have widened every gap, since it removed one half');
+md.push('of the cancellation. Together they took the 0.6 m overhang case from +3% to');
+md.push('0% and the louvre bank from +19% to +12%.');
+md.push('');
+md.push('Two further things in the split-flux engine were calibrated against these');
+md.push('cases and are worth knowing about:');
 md.push('');
 md.push('- A blocked sky direction is credited to the externally reflected component at');
 md.push('  **half** the device reflectance, because roughly half of what a blade scatters');
