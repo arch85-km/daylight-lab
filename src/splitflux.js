@@ -59,8 +59,19 @@ function shadingBvh(model) {
   return new BVH(tri.pos, tri.mat);
 }
 
-/** CIE overcast relative luminance for a direction of altitude `altRad`. */
-function overcastRel(altRad) { return (1 + 2 * Math.sin(Math.max(0, altRad))) / 3; }
+/**
+ * CIE Standard General Sky type 1 relative luminance, normalised to the zenith.
+ * The gradation is phi(Z) = 1 + a*exp(b/cos Z) with a = 4, b = -0.7, and
+ * cos Z = sin(altitude). This is the same sky the raytraced engine uses, so the
+ * two engines are compared under one definition; it replaces the Moon & Spencer
+ * form (1 + 2 sin a)/3, which is up to 25% brighter near the horizon and a few
+ * per cent darker high up, and which biased every side-lit case high and every
+ * skylight case low. See docs/ENGINE-VALIDATION.md section 3.
+ */
+function overcastRel(altRad) {
+  var cz = Math.max(Math.sin(Math.max(0, altRad)), 1e-9);
+  return (1 + 4 * Math.exp(-0.7 / cz)) / (1 + 4 * Math.exp(-0.7));
+}
 
 /**
  * Sky + externally reflected components at one point, by numerical
@@ -76,9 +87,16 @@ function skyComponents(model, px, py, pz, nx, ny, nz, sub, shadeBvh) {
   var scOpen = 0;                     // sky component ignoring the devices,
                                       // kept so the IRC can be scaled by them
   var N = sub || 6;
-  // Unobstructed horizontal illuminance under the same relative sky:
-  //   Eh = integral of L cos(theta) dw = (7*pi/9) * Lz, with Lz = 1
-  var Eh = 7 * Math.PI / 9;
+  /*
+   * Unobstructed horizontal illuminance under the same relative sky, with the
+   * zenith luminance taken as 1:
+   *   Eh = 2*pi * INT_0^{pi/2} L(a) sin a cos a da
+   * For CIE type 1 that integral has no elementary closed form; evaluated
+   * numerically it is 2.449541. The Moon & Spencer sky this replaced gave
+   * exactly 7*pi/9 = 2.443461, so using that constant here while the
+   * distribution above is CIE type 1 would scale every component 0.25% low.
+   */
+  var Eh = 2.449541;
   var sc = 0, erc = 0;
 
   for (var a = 0; a < aps.length; a++) {
@@ -171,7 +189,7 @@ function internallyReflected(model) {
   var rhoCw = (A.ceiling * r.ceiling + wallHalf * r.wall) / (A.ceiling + wallHalf);
 
   var C = breC(model.site.obstructionAngle || 0);
-  var irc = (T * Wg / (Atot * (1 - rho))) * (C * rhoFw + 5 * (rhoCw - rhoFw));
+  var irc = (T * Wg / (Atot * (1 - rho))) * (C * rhoFw + 5 * rhoCw);
   return Math.max(0, irc);
 }
 

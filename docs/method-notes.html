@@ -284,7 +284,9 @@
 
 <em>SC </em> numerical integration over each aperture, 8×8 samples
      (16×16 when any shading device is present), CIE overcast
-     relative luminance (1 + 2 sin α)/3, normalised by 7π/9
+     relative luminance from CIE Standard General Sky type 1,
+     (1 + 4·exp(−0.7/sin α)) / (1 + 4·exp(−0.7)), normalised by
+     that sky's own hemisphere integral, 2.44954
 
 <em>ERC</em> directions below the obstruction angle credited at the
      ground reflectance; directions blocked by the building's
@@ -299,22 +301,18 @@
      [39, 35, 31, 25, 20, 14, 10, 7, 5] over 0°–80° in 10° steps,
      which the tool pads to 90° with a further 5.</div>
       <p class="dl-note"><b>The internally reflected component departs from the published method in
-        three ways</b>, none of which is visible in the output unless you go looking.</p>
+        two ways</b>, neither visible in the output unless you go looking. A third departure existed
+        until this version: the second term was computed as
+        <span class="dl-mono">5(ρ_cw − ρ_fw)</span> rather than
+        <span class="dl-mono">5·ρ_cw</span>, putting the IRC about 10% low. It has been corrected,
+        together with a mismatch in the overcast sky the two engines used; section 06 records what
+        that did to the numbers.</p>
       <p class="dl-note"><b>It responds to shading, and the published method does not.</b> The BRE
         internally reflected component contains no shading term, so on its own it would not move
         for an overhang at all — and in a deep room, where the IRC dominates the back half, the
         daylight factor there would look completely unmoved. The tool scales IRC by the same
         fraction of sky flux the devices remove. This is an extension of BS 8206-2, <em>not</em>
         part of it, and the tool's own Engine panel says so.</p>
-      <p class="dl-note"><b>Its second term is not the published one.</b> The tool computes
-        <span class="dl-mono">5(ρ_cw − ρ_fw)</span> where BRE has <span class="dl-mono">5·ρ_cw</span>
-        — the ground-reflected light reaching the ceiling and upper walls. On the default room this
-        puts the internally reflected component about <b>10% below</b> what the published formula
-        gives, and the shortfall is stable across the reflectance range, from −9.8% with a dark
-        floor under a bright ceiling to −11.3% on gallery-white surfaces. The code offers no
-        reasoning for it, unlike the shading extension above, which is commented. Correcting it
-        would push split-flux <em>further</em> above the raytracer rather than closer, so the
-        engine-to-engine differences in section 06 would widen, not narrow.</p>
       <p class="dl-note"><b>Its leading term uses the model's own transmittance.</b> BRE fixes 0.85
         there; the tool substitutes the effective τ of the glazing actually specified. This is the
         benign departure — the tool knows its own glass — but it is still a departure, and it means
@@ -379,7 +377,9 @@
 f(χ) = 1 + c(exp(dχ) − exp(dπ/2)) + e · cos²χ     <em>indicatrix</em>
 L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       <p>The Perez implementation carries the full eight-bin, twenty-coefficient table and includes
-        the special case for the clearest bin exactly as Radiance's <code>gendaylit</code> does.
+        the alternative expressions for the coefficients c and d that apply to the
+        <b>lowest</b>-clearness bin — ε ≤ 1.065, overcast — exactly as Radiance's
+        <code>gendaylit</code> does.
         Relative luminances are then scaled so the patch set integrates to the target diffuse
         horizontal illuminance.</p>
 
@@ -487,7 +487,7 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         <tbody>
           <tr><td>Unobstructed point, CIE overcast (8192 rays)</td><td class="dl-n">100%</td><td class="dl-n">100.0017%</td><td class="dl-d">+0.002%</td></tr>
           <tr><td>Uniform sky hemisphere integral</td><td class="dl-n">π</td><td class="dl-n">3.1416</td><td class="dl-d">+0.00%</td></tr>
-          <tr><td>Overcast sky hemisphere integral</td><td class="dl-n">2.44346</td><td class="dl-n">2.4488</td><td class="dl-d">+0.22%</td></tr>
+          <tr><td>Overcast sky hemisphere integral</td><td class="dl-n">2.44954</td><td class="dl-n">2.4488</td><td class="dl-d">−0.03%</td></tr>
           <tr><td>Roof aperture 2 × 2 m at 2 m</td><td class="dl-n">23.946%</td><td class="dl-n">23.947%</td><td class="dl-d">+0.01%</td></tr>
           <tr><td>Roof aperture 1 × 1 m at 3 m</td><td class="dl-n">3.411%</td><td class="dl-n">3.415%</td><td class="dl-d">+0.12%</td></tr>
           <tr><td>Sealed box, no openings</td><td class="dl-n">0</td><td class="dl-n">0</td><td class="dl-d">exact</td></tr>
@@ -620,7 +620,7 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         tool's two engines are measured, and are the exception.</p>
       <h3>Where results should agree</h3>
       <ul>
-        <li><b>Method family.</b> The diffuse calculation is daylight coefficients over Tregenza/Reinhart patches — the same approach as Radiance's <code>rcontrib</code> and the three-phase method. The Perez sky matches <code>gendaylit</code> including its special case for the clearest bin.</li>
+        <li><b>Method family.</b> The diffuse calculation is daylight coefficients over Tregenza/Reinhart patches — the same approach as Radiance's <code>rcontrib</code> and the three-phase method. The Perez sky matches <code>gendaylit</code> including its alternative coefficients for the lowest-clearness bin.</li>
         <li><b>Solar geometry.</b> NOAA/Meeus to 0.1°. No meaningful divergence from any tool.</li>
         <li><b>Simple diffuse cases.</b> An unobstructed point reads 100.00% DF and rectangular roof apertures match closed-form configuration factors to ±0.12%. For a plain rectangular room with matt surfaces under a CIE overcast sky, daylight factors should sit within a few per cent of a well-converged Radiance run.</li>
         <li><b>The hand method.</b> The split-flux ADF agrees with a BS 8206-2 hand calculation because it <em>is</em> that calculation, coefficient table and all.</li>
@@ -644,14 +644,14 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         <thead><tr><th>Case</th><th class="dl-n">Raytraced</th><th class="dl-n">Split-flux</th><th class="dl-n">Difference</th></tr></thead>
         <tbody>
           <tr><td>Large window, thin wall</td><td class="dl-n">6.58%</td><td class="dl-n">6.83%</td><td class="dl-d">+4%</td></tr>
-          <tr><td>Bilateral</td><td class="dl-n">5.25%</td><td class="dl-n">5.57%</td><td class="dl-d">+6%</td></tr>
-          <tr><td>Deep plan, 12 m</td><td class="dl-n">3.34%</td><td class="dl-n">3.55%</td><td class="dl-d">+6%</td></tr>
-          <tr><td>0.6 m overhang</td><td class="dl-n">2.51%</td><td class="dl-n">2.58%</td><td class="dl-d">+3%</td></tr>
-          <tr><td>Louvre bank, 5 blades</td><td class="dl-n">0.88%</td><td class="dl-n">1.04%</td><td class="dl-d">+18%</td></tr>
-          <tr><td>Skylights only</td><td class="dl-n">7.87%</td><td class="dl-n">7.14%</td><td class="dl-d">−9%</td></tr>
-          <tr><td>Thick wall, 0.9 m</td><td class="dl-n">1.81%</td><td class="dl-n">3.78%</td><td class="dl-d">+108%</td></tr>
+          <tr><td>Bilateral</td><td class="dl-n">5.25%</td><td class="dl-n">5.55%</td><td class="dl-d">+6%</td></tr>
+          <tr><td>Deep plan, 12 m</td><td class="dl-n">3.34%</td><td class="dl-n">3.57%</td><td class="dl-d">+7%</td></tr>
+          <tr><td>0.6 m overhang</td><td class="dl-n">2.51%</td><td class="dl-n">2.52%</td><td class="dl-d">+0%</td></tr>
+          <tr><td>Louvre bank, 5 blades</td><td class="dl-n">0.88%</td><td class="dl-n">0.98%</td><td class="dl-d">+12%</td></tr>
+          <tr><td>Skylights only</td><td class="dl-n">7.87%</td><td class="dl-n">7.33%</td><td class="dl-d">−7%</td></tr>
+          <tr><td>Thick wall, 0.9 m</td><td class="dl-n">1.81%</td><td class="dl-n">3.77%</td><td class="dl-d">+108%</td></tr>
         </tbody>
-        <caption>Split-flux sits a few per cent high even unshaded — that offset is the baseline, not zero. The thick-wall row is the honest one: split-flux never sees the reveal, so a deep reveal moves one engine and not the other.</caption>
+        <caption>Split-flux still sits a few per cent high on side-lit cases and low on skylights, so that offset is the baseline, not zero. It used to be larger: two defects that had been partly cancelling — an internally reflected component about 10% low, and a different overcast sky from the raytracer's — were corrected together, taking the overhang case from +3% to 0% and the louvre bank from +18% to +12%. The thick-wall row is the honest one: split-flux never sees the reveal, so a deep reveal moves one engine and not the other.</caption>
       </table></div>
       <p>Use the raytracer for anything with fine shading structure or a deep reveal. Use split-flux
         when you want a number a student can check by hand.</p>
@@ -780,8 +780,9 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
       <li>Perez, R., Seals, R. &amp; Michalsky, J. (1993). &lsquo;All-weather model for sky luminance
         distribution &mdash; preliminary configuration and validation&rsquo;, <i>Solar Energy</i>, 50(3),
         pp. 235&ndash;245. &mdash; The all-weather sky, used whenever a climate file drives the calculation.
-        The full eight-bin, twenty-coefficient table is present, including the special case for the
-        clearest bin.</li>
+        The full eight-bin, twenty-coefficient table is present, including the alternative
+        expressions for the coefficients c and d that apply to the <b>lowest</b>-clearness bin
+        (ε ≤ 1.065, overcast) &mdash; not the clearest, as this page previously said.</li>
       <li>Tregenza, P. R. &amp; Waters, I. M. (1983). &lsquo;Daylight coefficients&rsquo;, <i>Lighting
         Research &amp; Technology</i>, 15(2), pp. 65&ndash;71. &mdash; The daylight-coefficient method the whole
         raytraced engine rests on.</li>
@@ -792,8 +793,12 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         produces.</li>
       <li>Reinhart, C. F. &amp; Walkenhorst, O. (2001). &lsquo;Validation of dynamic RADIANCE-based daylight
         simulations for a test office with external blinds&rsquo;, <i>Energy and Buildings</i>, 33(7),
-        pp. 683&ndash;697. &mdash; The MF generalisation of the Tregenza subdivision. MF:1 is Tregenza's 145
-        unchanged; MF:2 quarters each patch to give 577, which is the row structure
+        pp. 683&ndash;697. &mdash; The DAYSIM daylight-coefficient workflow the engine follows.</li>
+      <li>Bourgeois, D., Reinhart, C. F. &amp; Ward, G. (2008). &lsquo;Standard daylight coefficient model
+        for dynamic daylighting simulations&rsquo;, <i>Building Research &amp; Information</i>, 36(1),
+        pp. 68&ndash;82. &mdash; Where the MF:<i>n</i> generalisation of the Tregenza subdivision was
+        formalised, and implemented as <code>reinhart.cal</code> in Radiance. MF:1 is Tregenza's 145
+        unchanged; MF:2 quarters each patch to give 577, the row structure
         <code>[60,60,60,60,48,48,48,48,36,36,24,24,12,12]</code> in the code.</li>
       <li><b>NOAA Solar Calculator</b>, NOAA Global Monitoring Laboratory, after Meeus, J. (1998).
         <i>Astronomical Algorithms</i>, 2nd edn. Richmond, VA: Willmann-Bell. &mdash; Solar position in
@@ -831,7 +836,7 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         and 75% quoted in the interface, and the requirement that sDA be paired with an ASE
         check.</li>
       <li><b>BS 8206-2:2008</b>. <i>Lighting for buildings &mdash; Part 2: Code of practice for
-        daylighting</i>. London: BSI. <b>Withdrawn</b>, superseded by BS EN 17037:2018 <i>Daylight in
+        daylighting</i>. London: BSI. <b>Withdrawn</b>, superseded by BS EN 17037:2018+A1:2021 <i>Daylight in
         buildings</i>. &mdash; The split-flux method and the average daylight factor. Cite it as a
         withdrawn standard, and check BS EN 17037 for current practice.</li>
       <li>BRE (1986). <i>Estimating daylight in buildings: Part 2</i> (Digest 310). Building Research
@@ -851,8 +856,9 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         earlier Digests 41 and 42, where the table sat in the 1960s.</li>
       <li><b>Radiance</b> &mdash; Ward, G. J. (1994). &lsquo;The RADIANCE lighting simulation and rendering
         system&rsquo;, <i>Proceedings of SIGGRAPH &rsquo;94</i>, pp. 459&ndash;472. Named in the code at one point
-        only: the Perez special case for the clearest sky bin is applied as <code>gendaylit</code>
-        applies it. Section 06 compares the two tools more broadly, and that comparison is not drawn
+        only: the Perez alternative coefficients for the lowest-clearness bin are applied as
+        <code>gendaylit</code> applies them &mdash; that tool being Delaunay, J.-J. (1994),
+        distributed with Radiance. Section 06 compares the two tools more broadly, and that comparison is not drawn
         from this tool's source &mdash; see the note opening that section.</li>
       <li>M&ouml;ller, T. &amp; Trumbore, B. (1997). &lsquo;Fast, minimum storage ray-triangle intersection&rsquo;,
         <i>Journal of Graphics Tools</i>, 2(1), pp. 21&ndash;28. &mdash; Ray&ndash;triangle intersection, used at every
