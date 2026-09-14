@@ -291,8 +291,13 @@
      own shading devices credited at half the device reflectance
 
 <em>IRC</em> = (T·W / (A(1−ρ))) · (C·ρ_fw + 5(ρ_cw − ρ_fw))
-     C interpolated from the BRE table
-     [39, 35, 31, 25, 20, 14, 10, 7, 5, 5, 5] in 10° steps</div>
+     C weights sky light reaching the floor and lower walls and
+     falls off with the <em>obstruction</em> angle — not the visible-sky
+     angle θ used in the ADF below. The fixed 5 is ground-reflected
+     light reaching the ceiling and upper walls.
+     C interpolated from the BRE table, nine published values
+     [39, 35, 31, 25, 20, 14, 10, 7, 5] over 0°–80° in 10° steps,
+     which the tool pads to 90° with a further 5.</div>
       <p class="dl-note">One deliberate departure from the textbook: the BRE internally reflected
         component contains no shading term, so on its own it would not respond to an overhang at
         all. The tool scales IRC by the same fraction of sky flux the devices remove. This is an
@@ -812,11 +817,20 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         daylighting</i>. London: BSI. <b>Withdrawn</b>, superseded by BS EN 17037:2018 <i>Daylight in
         buildings</i>. &mdash; The split-flux method and the average daylight factor. Cite it as a
         withdrawn standard, and check BS EN 17037 for current practice.</li>
-      <li><span class="dl-chip is-part">check</span><b>BRE</b> &mdash; the C coefficient table
-        [39, 35, 31, 25, 20, 14, 10, 7, 5, 5, 5] in 10&deg; steps. Scaling the internally reflected
-        component by the shading devices is this tool's extension, not part of the method. The code
-        says only &ldquo;BRE&rdquo;; the table is usually traced to BRE Digest 309, <i>Estimating daylight in
-        buildings</i>, or to Hopkinson, Petherbridge &amp; Longmore (1966), <i>Daylighting</i>.</li>
+      <li>BRE (1986). <i>Estimating daylight in buildings: Part 2</i> (Digest 310). Building Research
+        Establishment. &mdash; The C coefficient table for the internally reflected component. C weights
+        the sky light reaching the floor and lower walls and falls off with the angle of external
+        obstruction measured from the window centre &mdash; <b>not</b> the visible-sky angle &theta; used in
+        the average daylight factor. The published table runs 0&deg;&ndash;80&deg; in 10&deg; steps:
+        39, 35, 31, 25, 20, 14, 10, 7, 5. <b>The tool extends it to 90&deg; with a constant 5</b>, which is
+        the tool's own padding, not the source's; physically there is no sky over the floor at 90&deg;
+        anyway. Scaling the IRC by the shading devices is also this tool's extension, not part of
+        the method. Originally derived in Hopkinson, R. G., Longmore, J. &amp; Petherbridge, P. (1954).
+        &lsquo;An empirical formula for the computation of the indirect component of daylight factor&rsquo;,
+        <i>Transactions of the Illuminating Engineering Society (London)</i>, 19, pp. 201&ndash;219; also in
+        Hopkinson, R. G., Petherbridge, P. &amp; Longmore, J. (1966). <i>Daylighting</i>. London:
+        Heinemann &mdash; note the author order differs between the two. Digests 309 and 310 replaced the
+        earlier Digests 41 and 42, where the table sat in the 1960s.</li>
       <li><b>Radiance</b> &mdash; Ward, G. J. (1994). &lsquo;The RADIANCE lighting simulation and rendering
         system&rsquo;, <i>Proceedings of SIGGRAPH &rsquo;94</i>, pp. 459&ndash;472. Named in the code at one point
         only: the Perez special case for the clearest sky bin is applied as <code>gendaylit</code>
