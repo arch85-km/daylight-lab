@@ -186,6 +186,7 @@
 .dl-doc .dl-refs{max-width:var(--dl-measure);margin:0 0 1.2rem;padding-left:1.15rem;
   display:grid;gap:.55rem;font-size:.9rem;color:var(--dl-ink2);}
 .dl-doc .dl-refs b{color:var(--dl-ink);font-weight:600;}
+.dl-doc .dl-refs .dl-chip{margin-right:.4rem;vertical-align:.08em;}
 .dl-doc .dl-ref{border-left:2px solid var(--dl-rule);padding-left:.95rem;margin:0 0 1rem;
   max-width:var(--dl-measure);font-size:.92rem;color:var(--dl-ink2);}
 .dl-doc pre{margin:0 0 1rem;padding:.9rem 1rem;background:var(--dl-surface);
@@ -741,50 +742,87 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
     <p>What the sky models, the solar algorithm and the metrics are drawn from, and what each one
       contributes. These are the sources the code itself names; where it names none &mdash; the glazing
       and reflectance presets among them &mdash; none is listed here either.</p>
+    <p class="dl-note"><b>Provenance of the citations.</b> The code names each source but not its
+      bibliographic detail: it says &ldquo;Perez et al. 1993&rdquo;, not the journal and volume. The
+      details below are supplied from the published literature, so verify them before citing.
+      Entries marked <span class="dl-chip is-part">check</span> are ones where the specific
+      publication or edition could not be determined from the code, and the identification given is
+      a best reading rather than a settled fact.</p>
     <ul class="dl-refs">
-      <li><b>CIE S 011</b> &mdash; the CIE Standard General Sky. All fifteen types are in the code, four are
-        offered in the interface, and type 1, the overcast sky, is the basis of every daylight
-        factor the tool reports.</li>
-      <li>Perez, R. <i>et al.</i> (1993) &mdash; the all-weather sky, used whenever a climate file drives
-        the calculation. The full eight-bin, twenty-coefficient table is present, including the
-        special case for the clearest bin exactly as Radiance's <code>gendaylit</code> applies it.</li>
-      <li>Tregenza, P. &amp; Reinhart, C. &mdash; the sky subdivision, and with it the daylight-coefficient
-        method the whole raytraced engine rests on. MF:1 gives 145 patches, MF:2 gives 577, each
-        plus a ground slot.</li>
-      <li><b>NOAA Solar Calculator</b>, after Meeus, J., <i>Astronomical Algorithms</i> &mdash; solar
-        position in its low-precision form: equation of time, nutation, obliquity correction and
-        NOAA's refraction fit. Checked against published values for four cities and found to agree
-        to 0.1&deg;.</li>
-      <li>Kasten, F. &amp; Young, A. T. &mdash; relative optical air mass, used by the synthetic clear-sky
-        year the tool falls back on when no EPW is loaded.</li>
-      <li><b>ASHRAE</b> clear-sky model &mdash; the shape of that synthetic year, modulated by a seeded
-        cloud walk. Deterministic and reproducible, but not a real climate.</li>
-      <li>Perez, R. <i>et al.</i> (1990) &mdash; luminous efficacy. Named in the code but <b>not
-        implemented</b>: a fitted curve stands in for it, giving about 75 lm/W at 10&deg; solar
-        altitude rising to 104 lm/W at 70&deg; for the beam, and 125 lm/W under overcast falling to
-        105 lm/W under clear sky for the diffuse.</li>
-      <li>Nabil, A. &amp; Mardaljevic, J. (2005), <i>Useful daylight illuminance: a new paradigm for
-        assessing daylight in buildings</i>, Lighting Research &amp; Technology 37(1) &mdash; UDI. The
-        default five-interval scheme extends their original 100&ndash;2000 lux proposal, which the tool
-        also offers as a preset.</li>
-      <li><b>IES LM-83</b> &mdash; sDA and ASE. The tool omits the blind-operation schedule LM-83
-        requires, which is why both are described throughout this page as indicative rather than
-        as submissions.</li>
-      <li><b>LEED v4</b> &mdash; the sDA<sub>300/50%</sub> credit thresholds of 55% and 75% quoted in the
-        interface, and the requirement that sDA be paired with an ASE check.</li>
-      <li><b>BS 8206-2</b> and <b>BRE</b> &mdash; the split-flux method, the average daylight factor, and
-        the C coefficient table [39, 35, 31, 25, 20, 14, 10, 7, 5, 5, 5] in 10&deg; steps. Scaling the
-        internally reflected component by the shading devices is this tool's extension, not part of
-        the standard.</li>
-      <li><b>Radiance</b> &mdash; named in the code at one point only: the Perez special case for the
-        clearest sky bin is applied as <code>gendaylit</code> applies it. Section 06 compares the two
-        tools more broadly, and that comparison is not drawn from this tool's source &mdash; see the
-        note opening that section.</li>
-      <li>M&ouml;ller, T. &amp; Trumbore, B. &mdash; ray&ndash;triangle intersection, used at every leaf of the
-        bounding-volume hierarchy.</li>
-      <li>van der Corput / Halton low-discrepancy sequences, with Cranley&ndash;Patterson rotation &mdash; the
-        sampling scheme that keeps each grid point's rays decorrelated from its neighbours'.</li>
-      <li><b>IESVE</b>, <b>Radiance via Ladybug and Honeybee</b> &mdash; named in the tool's own help
+      <li><b>CIE S 011/E:2003</b> (= ISO 15469:2004). <i>Spatial Distribution of Daylight &mdash; CIE
+        Standard General Sky</i>. Commission Internationale de l'&Eacute;clairage, Vienna. &mdash; All
+        fifteen types are in the code, four are offered in the interface, and type 1, the overcast
+        sky, is the basis of every daylight factor the tool reports.</li>
+      <li>Perez, R., Seals, R. &amp; Michalsky, J. (1993). &lsquo;All-weather model for sky luminance
+        distribution &mdash; preliminary configuration and validation&rsquo;, <i>Solar Energy</i>, 50(3),
+        pp. 235&ndash;245. &mdash; The all-weather sky, used whenever a climate file drives the calculation.
+        The full eight-bin, twenty-coefficient table is present, including the special case for the
+        clearest bin.</li>
+      <li>Tregenza, P. R. &amp; Waters, I. M. (1983). &lsquo;Daylight coefficients&rsquo;, <i>Lighting
+        Research &amp; Technology</i>, 15(2), pp. 65&ndash;71. &mdash; The daylight-coefficient method the whole
+        raytraced engine rests on.</li>
+      <li><span class="dl-chip is-part">check</span>Reinhart, C. F. &amp; Walkenhorst, O. (2001).
+        &lsquo;Validation of dynamic RADIANCE-based daylight simulations for a test office with external
+        blinds&rsquo;, <i>Energy and Buildings</i>, 33(7), pp. 683&ndash;697. &mdash; The MF subdivision that gives
+        145 patches at MF:1 and 577 at MF:2. The code says only &ldquo;Reinhart&rdquo;; the subdivision is
+        attributed variously to this paper, to Reinhart &amp; Herkel (2000), and to the Daysim
+        documentation.</li>
+      <li><b>NOAA Solar Calculator</b>, NOAA Global Monitoring Laboratory, after Meeus, J. (1998).
+        <i>Astronomical Algorithms</i>, 2nd edn. Richmond, VA: Willmann-Bell. &mdash; Solar position in
+        its low-precision form: equation of time, nutation, obliquity correction and NOAA's
+        refraction fit. Checked against published values for four cities and found to agree to
+        0.1&deg;.</li>
+      <li>Kasten, F. &amp; Young, A. T. (1989). &lsquo;Revised optical air mass tables and approximation
+        formula&rsquo;, <i>Applied Optics</i>, 28(22), pp. 4735&ndash;4738. &mdash; Relative optical air mass, used
+        by the synthetic clear-sky year the tool falls back on when no EPW is loaded.</li>
+      <li><span class="dl-chip is-part">check</span><b>ASHRAE</b> clear-sky irradiance model,
+        <i>ASHRAE Handbook &mdash; Fundamentals</i>. &mdash; The shape of that synthetic year, modulated by a
+        seeded cloud walk. Deterministic and reproducible, but not a real climate. The code says
+        only &ldquo;ASHRAE-style&rdquo;; the edition and chapter could not be determined from it.</li>
+      <li>Perez, R., Ineichen, P., Seals, R., Michalsky, J. &amp; Stewart, R. (1990). &lsquo;Modeling
+        daylight availability and irradiance components from direct and global irradiance&rsquo;,
+        <i>Solar Energy</i>, 44(5), pp. 271&ndash;289. &mdash; Named in the code but <b>not implemented</b>: a
+        fitted curve stands in for it, giving about 75 lm/W at 10&deg; solar altitude rising to 104 lm/W
+        at 70&deg; for the beam, and 125 lm/W under overcast falling to 105 lm/W under clear sky for the
+        diffuse.</li>
+      <li>Nabil, A. &amp; Mardaljevic, J. (2005). &lsquo;Useful daylight illuminance: a new paradigm for
+        assessing daylight in buildings&rsquo;, <i>Lighting Research &amp; Technology</i>, 37(1), pp. 41&ndash;59.
+        &mdash; UDI. The default five-interval scheme extends their original 100&ndash;2000 lux proposal, which
+        the tool also offers as a preset.</li>
+      <li><span class="dl-chip is-part">check</span><b>IES LM-83</b>. Illuminating Engineering
+        Society, <i>Approved Method: IES Spatial Daylight Autonomy (sDA) and Annual Sunlight
+        Exposure (ASE)</i>. &mdash; sDA and ASE. The tool omits the blind-operation schedule LM-83
+        requires, which is why both are described throughout this page as indicative rather than as
+        submissions. The code names no edition; LM-83-12 was revised as LM-83-23, and the method
+        changed between them.</li>
+      <li><b>LEED v4</b>. U.S. Green Building Council, <i>LEED v4 for Building Design and
+        Construction</i>, EQ Credit: Daylight. &mdash; The sDA<sub>300/50%</sub> credit thresholds of 55%
+        and 75% quoted in the interface, and the requirement that sDA be paired with an ASE
+        check.</li>
+      <li><b>BS 8206-2:2008</b>. <i>Lighting for buildings &mdash; Part 2: Code of practice for
+        daylighting</i>. London: BSI. <b>Withdrawn</b>, superseded by BS EN 17037:2018 <i>Daylight in
+        buildings</i>. &mdash; The split-flux method and the average daylight factor. Cite it as a
+        withdrawn standard, and check BS EN 17037 for current practice.</li>
+      <li><span class="dl-chip is-part">check</span><b>BRE</b> &mdash; the C coefficient table
+        [39, 35, 31, 25, 20, 14, 10, 7, 5, 5, 5] in 10&deg; steps. Scaling the internally reflected
+        component by the shading devices is this tool's extension, not part of the method. The code
+        says only &ldquo;BRE&rdquo;; the table is usually traced to BRE Digest 309, <i>Estimating daylight in
+        buildings</i>, or to Hopkinson, Petherbridge &amp; Longmore (1966), <i>Daylighting</i>.</li>
+      <li><b>Radiance</b> &mdash; Ward, G. J. (1994). &lsquo;The RADIANCE lighting simulation and rendering
+        system&rsquo;, <i>Proceedings of SIGGRAPH &rsquo;94</i>, pp. 459&ndash;472. Named in the code at one point
+        only: the Perez special case for the clearest sky bin is applied as <code>gendaylit</code>
+        applies it. Section 06 compares the two tools more broadly, and that comparison is not drawn
+        from this tool's source &mdash; see the note opening that section.</li>
+      <li>M&ouml;ller, T. &amp; Trumbore, B. (1997). &lsquo;Fast, minimum storage ray-triangle intersection&rsquo;,
+        <i>Journal of Graphics Tools</i>, 2(1), pp. 21&ndash;28. &mdash; Ray&ndash;triangle intersection, used at every
+        leaf of the bounding-volume hierarchy.</li>
+      <li>Halton, J. H. (1964). &lsquo;Algorithm 247: Radical-inverse quasi-random point sequence&rsquo;,
+        <i>Communications of the ACM</i>, 7(12), pp. 701&ndash;702; and Cranley, R. &amp; Patterson, T. N. L.
+        (1976). &lsquo;Randomization of number theoretic methods for multiple integration&rsquo;, <i>SIAM
+        Journal on Numerical Analysis</i>, 13(6), pp. 904&ndash;914. &mdash; The van der Corput / Halton
+        low-discrepancy sampling, rotated per point, that keeps each grid point's rays decorrelated
+        from its neighbours'.</li>
+      <li><b>IESVE</b>, and <b>Radiance via Ladybug and Honeybee</b> &mdash; named in the tool's own help
         text, and repeated in this page's footer, as where to go for a compliance submission. They
         are signposts, not sources: nothing in the tool is taken from any of them.</li>
       <li><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> &mdash; rendering only;
