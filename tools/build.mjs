@@ -13,6 +13,7 @@
  * Placeholders in src/index.html:  __STYLE__ __WORKER__ __THREE__ __APP__
  */
 import { readFileSync, writeFileSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -135,8 +136,20 @@ if (noticeBody.includes('--')) {
 }
 const notice = `<!--\n${noticeBody}\n-->`;
 
+/*
+ * Build stamp: the date a human reads, and a hash that separates two builds
+ * made the same day - which happened repeatedly while the engines were being
+ * fixed. Hashed over the assembled sources only, never the date, so rebuilding
+ * without touching src/ gives the same hash and a real change always shows.
+ * Generated rather than typed: a stamp you have to remember to update is a
+ * stamp that will be wrong exactly when it matters.
+ */
+const buildHash = createHash('sha256').update(app).update(worker).update(style).digest('hex').slice(0, 6);
+const buildStamp = `${new Date().toISOString().slice(0, 10)} \u00b7 ${buildHash}`;
+
 const out = read('src/index.html')
   .replace('__NOTICE__', () => notice)
+  .replace(/__BUILD__/g, () => buildStamp)
   .replace('__STYLE__', () => style)
   .replace('__THREE__', () => guard(three))
   .replace('__WORKER__', () => guard(worker))
@@ -151,3 +164,4 @@ console.log('  app       ' + kb(app.length));
 console.log('  worker    ' + kb(worker.length));
 console.log('  css       ' + kb(style.length));
 console.log('  total     ' + kb(statSync(join(root, 'daylight-lab.html')).size));
+console.log('  build     ' + buildStamp);

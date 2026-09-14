@@ -1295,7 +1295,11 @@ var INFO = {
       '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">creativecommons.org/licenses/by/4.0</a></p>' +
       '<p>Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r160 (MIT), inlined into ' +
       'this file along with its licence. Legend colour maps: viridis, inferno and cividis (CC0), turbo (Google, ' +
-      'Apache-2.0). The full notice is at the top of the file itself — view source to read it.</p>'
+      'Apache-2.0). The full notice is at the top of the file itself — view source to read it.</p>' +
+      '<h3>This build</h3>' +
+      '<p>The date and source hash in the bottom bar identify the exact build you are running, and ' +
+      'travel with every image and model you export. Quote them alongside any figure: the engines ' +
+      'have changed before, and two runs of the same model on different builds can differ.</p>'
   }
 };
 

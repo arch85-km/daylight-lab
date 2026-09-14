@@ -1077,6 +1077,21 @@ ok("the project's own terms ship inside the file",
   'MIT for the app, CC BY 4.0 named for the documentation');
 ok('the bundled colour maps are credited', inHead('Apache-2.0'));
 
+/*
+ * The build stamp must be substituted, not shipped as its own placeholder.
+ * A build that silently failed to replace it would put the literal __BUILD__
+ * in the status bar and into every exported image - reading as a bug to the
+ * one person most likely to notice, and telling them nothing about which
+ * build they have.
+ */
+{
+  const m = built.match(/id="build"[^>]*>([^<]*)</);
+  const stamp = m ? m[1].trim() : '';
+  ok('the build stamp is substituted at build time',
+    /^\d{4}-\d{2}-\d{2} \u00b7 [0-9a-f]{6}$/.test(stamp) && !built.includes("__BUILD__"),
+    stamp || 'no stamp found');
+}
+
 // An HTML comment cannot contain "--". If one ever crept into the licence text
 // the notice would terminate early and spill the rest into the page as markup.
 const open = built.indexOf('<!--');
