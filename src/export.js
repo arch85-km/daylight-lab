@@ -9,18 +9,6 @@
 
 var COPYRIGHT = '© Karam Al-Obaidi';
 
-/**
- * The build stamp the status bar is showing. Read from the DOM rather than
- * held in a second constant, so there is exactly one place the build script
- * substitutes and no way for the two to disagree. Lazy, because this module
- * is evaluated before the bar exists.
- */
-function buildStamp() {
-  var el = document.getElementById('build');
-  var t = el ? (el.textContent || '').trim() : '';
-  return /^\d{4}-\d{2}-\d{2}/.test(t) ? t : '';
-}
-
 function download(name, blobOrText, mime) {
   var blob = blobOrText instanceof Blob ? blobOrText : new Blob([blobOrText], { type: mime || 'text/plain' });
   var url = URL.createObjectURL(blob);
@@ -249,9 +237,7 @@ function drawTitleBlock(g, x, y, w, h, scale, ctx, ink, ink2, ink3, panel, line)
   g.fillText(COPYRIGHT, 16, Y + H - 12);
 
   g.fillStyle = ink3; g.font = '10px system-ui, sans-serif'; g.textAlign = 'right';
-  var bs = buildStamp();
-  g.fillText('Daylight Lab — daylight simulation tool' + (bs ? '  ·  build ' + bs : ''),
-             W - 16, Y + H - 12);
+  g.fillText('Daylight Lab — daylight simulation tool', W - 16, Y + H - 12);
   g.restore();
 }
 function colWMin() { return 220; }
@@ -259,7 +245,7 @@ function colWMin() { return 220; }
 /** Model + settings as JSON, round-trippable through loadModelJson(). */
 function exportJson(model, extra) {
   var payload = {
-    app: 'Daylight Lab', version: 1, build: buildStamp(),
+    app: 'Daylight Lab', version: 1,
     exported: new Date().toISOString(),
     copyright: COPYRIGHT,
     model: model
