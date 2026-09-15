@@ -320,9 +320,12 @@ what you build — just keep the credit. The copyright notice embedded in the
 interface, the status bar and every exported image satisfies attribution on its
 own when left in place.
 
-Full text and the third-party carve-outs are in [`LICENSE`](LICENSE). The MIT
-notice travels **inside** `daylight-lab.html` itself, because the single file is
-the thing people actually receive.
+The MIT text is in [`LICENSE`](LICENSE); the CC BY 4.0 terms for the
+documentation, the third-party carve-outs and the scope statement are in
+[`NOTICE`](NOTICE) beside it. They are kept apart so that automated licence
+detection can recognise the software half. The MIT notice also travels
+**inside** `daylight-lab.html` itself, because the single file is the thing
+people actually receive.
 
 ## Credits
 
