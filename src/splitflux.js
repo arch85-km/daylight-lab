@@ -158,7 +158,7 @@ function skyComponents(model, px, py, pz, nx, ny, nz, sub, shadeBvh) {
 
 /**
  * BRE average internally reflected component (uniform over the room).
- *   IRC = (T*W / (A*(1-rho))) * (C*rho_fw + 5*(rho_cw - rho_fw))
+ *   IRC = (T*W / (A*(1-rho))) * (C*rho_fw + 5*rho_cw)
  */
 function internallyReflected(model) {
   var R = model.room, r = R.refl;
