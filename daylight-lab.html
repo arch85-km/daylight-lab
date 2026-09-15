@@ -3,7 +3,7 @@
 <title>Daylight Lab</title>
 <meta name="description" content="Interactive daylighting analysis for architecture students — illuminance, daylight factor and useful daylight illuminance on a workplane grid, with a 3D sun path, shadows and solar ray access.">
 <meta name="author" content="Karam Al-Obaidi">
-<meta name="build" content="2026-09-14 · f9ca63">
+<meta name="build" content="2026-09-15 · c5709a">
 <!--
   Daylight Lab — a browser-based daylight simulation tool
   Copyright © Karam Al-Obaidi
@@ -4163,7 +4163,7 @@ function skyComponents(model, px, py, pz, nx, ny, nz, sub, shadeBvh) {
 
 /**
  * BRE average internally reflected component (uniform over the room).
- *   IRC = (T*W / (A*(1-rho))) * (C*rho_fw + 5*(rho_cw - rho_fw))
+ *   IRC = (T*W / (A*(1-rho))) * (C*rho_fw + 5*rho_cw)
  */
 function internallyReflected(model) {
   var R = model.room, r = R.refl;
