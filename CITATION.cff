@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If this tool informs a paper, a thesis, a lecture or a studio brief, please cite it as software."
+type: software
+title: "Daylight Lab: a browser-based daylight simulation tool"
+version: 1.0.0
+date-released: 2026-09-15
+abstract: >-
+  A daylighting analysis tool for architecture students that runs entirely in
+  the browser, shipped as a single self-contained HTML file. A parametric room
+  with real wall, roof and floor thickness; windows, skylights and doors that
+  can be added, sized and moved; horizontal and vertical shading devices; a 3D
+  sun path with shadows and visible solar rays; and a workplane grid reporting
+  illuminance, daylight factor and useful daylight illuminance, plus daylight
+  autonomy, spatial daylight autonomy, annual sunlight exposure and direct sun
+  hours. Two independent engines are provided — a Monte-Carlo raytracer using
+  daylight coefficients over Tregenza/Reinhart sky patches, and a BRE
+  split-flux implementation following BS 8206-2 — and their agreement is
+  measured and published.
+authors:
+  - family-names: Al-Obaidi
+    given-names: Karam M.
+    orcid: "https://orcid.org/0000-0002-4379-6964"
+    affiliation: "Sheffield Hallam University"
+license:
+  - MIT
+  - CC-BY-4.0
+repository-code: "https://github.com/arch85-km/daylight-lab"
+url: "https://karam.me.uk/applications/daylight-lab/"
+keywords:
+  - daylighting
+  - daylight factor
+  - daylight simulation
+  - useful daylight illuminance
+  - building performance
+  - architectural education
+  - architecture
+  - three.js

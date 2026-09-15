@@ -1,0 +1,26 @@
+{
+  "upload_type": "software",
+  "title": "Daylight Lab: a browser-based daylight simulation tool",
+  "version": "1.0.0",
+  "language": "eng",
+  "license": "MIT",
+  "creators": [
+    {
+      "name": "Al-Obaidi, Karam M.",
+      "affiliation": "Sheffield Hallam University",
+      "orcid": "0000-0002-4379-6964"
+    }
+  ],
+  "description": "<p>Daylight Lab is a daylighting analysis tool for architecture students that runs entirely in the browser. It ships as a single self-contained HTML file with no CDN, no build step for the end user and no install.</p><p>A parametric room is modelled with real wall, roof and floor thickness; windows, skylights and doors can be added, sized and moved; horizontal and vertical shading devices are supported. A 3D sun path shows shadows and visible solar rays, and a workplane grid reports illuminance, daylight factor and useful daylight illuminance, together with daylight autonomy, spatial daylight autonomy, annual sunlight exposure and direct sun hours.</p><p>Two independent engines are provided: a Monte-Carlo raytracer using daylight coefficients over Tregenza/Reinhart sky patches, and a BRE split-flux implementation following BS 8206-2. Their agreement is measured and published in docs/ENGINE-VALIDATION.md. The method notes in docs/method-notes.html document every assumption, name every source the code implements, and declare the tool's limitations.</p>",
+  "notes": "Dual-licensed. The software (src/, tools/, test/ and the built daylight-lab.html) is released under the MIT Licence. The documentation and teaching material (README.md, docs/, the method notes page, the exercises and figures) is released under CC BY 4.0.",
+  "keywords": [
+    "daylighting",
+    "daylight factor",
+    "daylight simulation",
+    "useful daylight illuminance",
+    "building performance",
+    "architectural education",
+    "architecture",
+    "three.js"
+  ]
+}
