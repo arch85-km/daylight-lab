@@ -1,5 +1,7 @@
 # Daylight Lab
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22796355.svg)](https://doi.org/10.5281/zenodo.22796355)
+
 An interactive daylight simulation tool for architecture students. A parametric room with
 real wall, roof and floor thickness; windows, skylights and doors you can add,
 size and move; horizontal and vertical shading devices; a 3D sun path with
@@ -269,14 +271,12 @@ courtesy on top of it.
 **APA 7**
 
 > Al-Obaidi, K. M. (2026). *Daylight Lab: A browser-based daylight simulation tool*
-> (Version 1.0.0) [Computer software].
-> https://karam.me.uk/applications/daylight-lab/
+> (Version 1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.22796356
 
 **Harvard**
 
 > Al-Obaidi, K.M. (2026) *Daylight Lab: A browser-based daylight simulation tool*
-> (Version 1.0.0). Available at:
-> https://karam.me.uk/applications/daylight-lab/
+> (Version 1.0.0). Zenodo. Available at: https://doi.org/10.5281/zenodo.22796356
 
 **BibTeX**
 
@@ -286,7 +286,9 @@ courtesy on top of it.
   title   = {Daylight Lab: A browser-based daylight simulation tool},
   year    = {2026},
   version = {1.0.0},
-  url     = {https://karam.me.uk/applications/daylight-lab/},
+  publisher = {Zenodo},
+  doi     = {10.5281/zenodo.22796356},
+  url     = {https://doi.org/10.5281/zenodo.22796356},
   note    = {MIT licensed}
 }
 ```
