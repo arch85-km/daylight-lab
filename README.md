@@ -282,28 +282,26 @@ courtesy on top of it.
 
 ```bibtex
 @software{alobaidi2026daylightlab,
-  author  = {Al-Obaidi, Karam M.},
-  title   = {Daylight Lab: A browser-based daylight simulation tool},
-  year    = {2026},
-  version = {1.0.0},
+  author    = {Al-Obaidi, Karam M.},
+  title     = {Daylight Lab: A browser-based daylight simulation tool},
+  year      = {2026},
+  version   = {1.0.0},
   publisher = {Zenodo},
-  doi     = {10.5281/zenodo.22796356},
-  url     = {https://doi.org/10.5281/zenodo.22796356},
-  note    = {MIT licensed}
+  doi       = {10.5281/zenodo.22796356},
+  url       = {https://karam.me.uk/applications/daylight-lab/},
+  note      = {Code MIT licensed; accompanying material CC BY 4.0}
 }
 ```
+
+That DOI names this release. To cite the software in general rather than version
+1.0.0, use the concept DOI [10.5281/zenodo.22796355](https://doi.org/10.5281/zenodo.22796355),
+which always resolves to the newest version.
 
 Anyone reporting results from the tool should also state the **engine**
 (raytraced or split-flux), the **quality tier**, the **sky model** and the
 **climate file**, since all four change the numbers. Every exported image
 carries them in its title block, and the CSV export carries them as header
 comments.
-
-> **Getting a DOI.** A permanent DOI makes the tool far easier to cite, and
-> reviewers prefer one to a bare URL. [Zenodo](https://zenodo.org) mints them
-> free and can watch a GitHub repository, issuing a new DOI for each release.
-> Once minted, add it to the entries above — the DOI then replaces the URL as
-> the thing people quote.
 
 ---
 
