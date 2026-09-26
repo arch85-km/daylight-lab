@@ -407,56 +407,57 @@
         <span class="dl-ex-n">Exercise 02</span>
         <h3>A shading device that lowers the daylight factor can improve the daylight</h3>
         <figure class="dl-fig">
-<svg viewBox="0 0 720 260" role="img" aria-label="Schematic. Adding an overhang shortens the mean daylight factor bar, because daylight factor has no upper bound. On the same change the useful daylight illuminance band grows and the over-lit band shrinks, because useful daylight illuminance is bounded above.">
+<svg viewBox="0 0 720 290" role="img" aria-label="The annual spread of workplane illuminance against the UDI thresholds. Before shading, a long tail of hours sits above 3000 lux in the over-lit band. Shading shifts the whole spread left, so those hours land in the useful band instead. Daylight factor has no upper band, so the same shift can only reduce it.">
   <defs>
-    <marker id="dl-f2-dn" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="7" markerHeight="7" orient="auto">
-      <path d="M0 0 L10 0 L5 10 z" fill="var(--dl-no)"/></marker>
-    <marker id="dl-f2-up" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="7" markerHeight="7" orient="auto">
-      <path d="M0 10 L10 10 L5 0 z" fill="var(--dl-ok)"/></marker>
+    <marker id="dl-f2-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="var(--dl-ink)"/></marker>
   </defs>
-  <line x1="360" y1="16" x2="360" y2="236" stroke="var(--dl-rule)" stroke-width="1"/>
-  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="var(--dl-ink)">
-    <text x="20" y="28">MEAN DAYLIGHT FACTOR</text>
-    <text x="392" y="28">UDI &#183; share of occupied hours</text>
-  </g>
-  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" fill="var(--dl-ink3)">
-    <text x="20" y="44">no upper bound</text>
-    <text x="392" y="44">bounded above and below</text>
+  <text x="20" y="24" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="var(--dl-ink)">WHERE THE YEAR&#8217;S HOURS FALL &#183; workplane illuminance</text>
+
+  <!-- bands -->
+  <rect x="80" y="44" width="51"  height="162" fill="var(--dl-ink3)" opacity=".09"/>
+  <rect x="131" y="44" width="377" height="162" fill="var(--dl-ok-soft)"/>
+  <rect x="508" y="44" width="152" height="162" fill="var(--dl-no-soft)"/>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10">
+    <text x="84" y="58" fill="var(--dl-ink3)">too low</text>
+    <text x="300" y="58" fill="var(--dl-ok)">useful</text>
+    <text x="580" y="58" fill="var(--dl-no)">too high</text>
   </g>
 
-  <!-- DF -->
-  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink3)">
-    <text x="20" y="84">before</text><text x="20" y="134">after</text>
-  </g>
-  <line x1="80" y1="62" x2="80" y2="150" stroke="var(--dl-ink3)" stroke-width="1"/>
-  <rect x="80" y="68" width="210" height="22" fill="var(--dl-accent-soft)" stroke="var(--dl-accent)" stroke-width="1.4"/>
-  <rect x="80" y="118" width="150" height="22" fill="var(--dl-accent-soft)" stroke="var(--dl-accent)" stroke-width="1.4"/>
-  <line x1="290" y1="96" x2="290" y2="112" stroke="var(--dl-no)" stroke-width="1.8" marker-end="url(#dl-f2-dn)"/>
-  <text x="300" y="112" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-no)">falls</text>
-  <text x="20" y="178" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" fill="var(--dl-ink3)">shading can only take light away,</text>
-  <text x="20" y="192" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" fill="var(--dl-ink3)">so this bar can only get shorter</text>
+  <!-- before / after distributions -->
+  <path d="M88 206 C 160 204, 230 146, 320 130 C 410 114, 470 134, 540 158 C 590 176, 630 192, 660 200 L 660 206 Z"
+        fill="var(--dl-ink3)" opacity=".22"/>
+  <path d="M88 206 C 160 204, 230 146, 320 130 C 410 114, 470 134, 540 158 C 590 176, 630 192, 660 200"
+        fill="none" stroke="var(--dl-ink3)" stroke-width="1.6" stroke-dasharray="5 3"/>
+  <path d="M88 206 C 150 202, 210 134, 280 122 C 350 110, 400 140, 450 168 C 490 188, 520 202, 548 205 L 660 206 Z"
+        fill="var(--dl-accent-soft)"/>
+  <path d="M88 206 C 150 202, 210 134, 280 122 C 350 110, 400 140, 450 168 C 490 188, 520 202, 548 205 L 660 206"
+        fill="none" stroke="var(--dl-accent)" stroke-width="2"/>
 
-  <!-- UDI -->
-  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink3)">
-    <text x="392" y="84">before</text><text x="392" y="134">after</text>
+  <!-- axis -->
+  <line x1="80" y1="206" x2="660" y2="206" stroke="var(--dl-ink)" stroke-width="1.4"/>
+  <g stroke="var(--dl-ink)" stroke-width="1">
+    <line x1="131" y1="206" x2="131" y2="212"/><line x1="218" y1="206" x2="218" y2="212"/>
+    <line x1="283" y1="206" x2="283" y2="212"/><line x1="508" y1="206" x2="508" y2="212"/>
   </g>
-  <line x1="452" y1="62" x2="452" y2="150" stroke="var(--dl-ink3)" stroke-width="1"/>
-  <g stroke-width="1.4">
-    <rect x="452" y="68" width="124" height="22" fill="var(--dl-ok-soft)" stroke="var(--dl-ok)"/>
-    <rect x="576" y="68" width="100" height="22" fill="var(--dl-no-soft)" stroke="var(--dl-no)"/>
-    <rect x="452" y="118" width="176" height="22" fill="var(--dl-ok-soft)" stroke="var(--dl-ok)"/>
-    <rect x="628" y="118" width="48"  height="22" fill="var(--dl-no-soft)" stroke="var(--dl-no)"/>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--dl-ink3)">
+    <text x="118" y="224">150</text><text x="205" y="224">300</text><text x="270" y="224">500</text>
+    <text x="492" y="224">3000</text><text x="612" y="224">lux</text>
   </g>
-  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5">
-    <text x="460" y="83" fill="var(--dl-ok)">useful</text><text x="584" y="83" fill="var(--dl-no)">too high</text>
-    <text x="460" y="133" fill="var(--dl-ok)">useful</text><text x="634" y="133" fill="var(--dl-no)">too high</text>
-  </g>
-  <line x1="600" y1="112" x2="600" y2="96" stroke="var(--dl-ok)" stroke-width="1.8" marker-end="url(#dl-f2-up)"/>
-  <text x="392" y="178" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" fill="var(--dl-ink3)">hours move out of over-lit and into</text>
-  <text x="392" y="192" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" fill="var(--dl-ink3)">useful, so the green band grows</text>
 
-  <text x="20" y="226" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="var(--dl-ink)">One design change. The two metrics move in opposite directions.</text>
-  <text x="20" y="246" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--dl-ink3)">Schematic — bar lengths show direction of change, not measured values. Run it for your own numbers.</text>
+  <!-- the tail that moves -->
+  <line x1="600" y1="150" x2="470" y2="150" stroke="var(--dl-ink)" stroke-width="1.6" marker-end="url(#dl-f2-m)"/>
+  <text x="470" y="142" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" fill="var(--dl-ink)">these hours move left</text>
+
+  <!-- legend -->
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10">
+    <line x1="80" y1="246" x2="110" y2="246" stroke="var(--dl-ink3)" stroke-width="1.6" stroke-dasharray="5 3"/>
+    <text x="116" y="250" fill="var(--dl-ink3)">before shading</text>
+    <line x1="240" y1="246" x2="270" y2="246" stroke="var(--dl-accent)" stroke-width="2"/>
+    <text x="276" y="250" fill="var(--dl-ink3)">with the overhang</text>
+  </g>
+  <text x="80" y="272" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink)">UDI counts hours per band, so the shift helps it. DF has no upper band, so the shift only shrinks it.</text>
+  <text x="80" y="286" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--dl-ink3)">Shape is schematic; the thresholds are the exercise&#8217;s own 150 / 300 / 500 / 3000 lux.</text>
 </svg>
 <figcaption>The question you are asking decides which metric to quote.</figcaption>
         </figure>
