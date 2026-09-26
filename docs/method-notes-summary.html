@@ -284,9 +284,10 @@
     <div class="dl-sechead"><span class="dl-secnum"></span><h2>How exact the numbers are</h2></div>
     <div class="dl-secbody">
       <p>Measured by the tool's own audit, which drives the shipped file in headless Chromium and
-        compares against results derived independently of the code. An unobstructed point reads
-        100.0017% against an exact 100%; rectangular roof apertures match closed-form
-        configuration factors to &plusmn;0.12%. What the browser approximations cost:</p>
+        compares against answers derived independently of the code. The sky integration and the
+        geometry check out: every closed-form benchmark is matched to better than 0.15%. That
+        tests the machinery, not the accuracy of a result in a room &mdash; what actually costs
+        you is this:</p>
       <div class="dl-ledger">
         <div><span class="dl-chip is-out">up to &minus;20%</span><dt>Bounce truncation</dt>
           <dd>The most significant approximation. In a deliberately bright room, going from 4 to 12
