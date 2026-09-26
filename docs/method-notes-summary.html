@@ -146,11 +146,18 @@
 
 /* diagrams. The SVGs paint from the same custom properties as everything
    else, so they invert with the page instead of staying light in dark mode. */
-.dl-doc .dl-fig{margin:0 0 1.2rem;}
-.dl-doc .dl-fig svg{display:block;width:100%;height:auto;
+/* Figures. A host theme usually styles <figure> and <figcaption> itself, and
+   its rules can be specific enough to win here — which is where an italic
+   caption and a caption sitting hard against the next paragraph come from.
+   The four properties that decide that are pinned, so the caption keeps this
+   page's own monospace label style wherever the fragment is pasted. */
+.dl-doc .dl-fig{margin:0 0 1.9rem !important;font-style:normal;}
+.dl-doc .dl-fig svg{display:block;width:100%;height:auto;font-style:normal;
   background:var(--dl-paper);border:1px solid var(--dl-rule);}
-.dl-doc .dl-fig figcaption{font-family:var(--dl-fm);font-size:.68rem;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--dl-ink3);margin-top:.55rem;}
+.dl-doc .dl-fig figcaption{font-family:var(--dl-fm) !important;
+  font-style:normal !important;font-size:.68rem;letter-spacing:.06em;line-height:1.5;
+  text-align:left;text-transform:uppercase;color:var(--dl-ink3);
+  margin:.7rem 0 0 !important;}
 
 /* Large screens. Most sizes here are in rem, which is relative to the ROOT
    font size, not to .dl-doc — so raising .dl-doc alone would scale the body
