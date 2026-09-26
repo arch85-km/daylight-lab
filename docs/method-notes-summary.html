@@ -1,0 +1,632 @@
+<!-- ======================================================================
+     DAYLIGHT LAB — "Method notes in brief"
+     A short companion to the full method notes.
+
+     Uses the same design system as the full notes: the .dl-doc scope, the same
+     custom properties, the same class names. Body type inherits from the site,
+     and it carries the same dark-mode block.
+
+     IF YOU PASTE THIS ON THE SAME PAGE AS THE FULL NOTES, delete the <style>
+     block below — the full notes already define every rule it contains.
+
+     THE CITATION STRIP JUMPS HERE. The "How to cite" heading carries
+     id="how-to-cite". Only ONE element per page may hold that id.
+     ====================================================================== -->
+
+<style>
+
+     block below — the full notes already define every rule it contains, and
+     one copy is enough. On its own page, keep it.
+
+     THE CITATION STRIP JUMPS HERE. The "How to cite" heading below carries
+     id="how-to-cite", which is what the strip's "Version, BibTeX and licence"
+     link targets. Only ONE element per page may hold that id — so if the full
+     method notes are on this same page, remove the id from one of them.
+     ====================================================================== -->
+
+<style>
+.dl-doc{
+  --dl-paper:#F1F2EE; --dl-surface:#FBFBF9; --dl-surface2:#E8EAE4;
+  --dl-ink:#16191B; --dl-ink2:#4C555A; --dl-ink3:#5F696E;
+  --dl-rule:#D6D9D1; --dl-rule2:#E5E7E1;
+  --dl-accent:#1D5A73; --dl-accent-soft:rgba(29,90,115,.10);
+  --dl-ok:#3F6B47;  --dl-ok-soft:rgba(63,107,71,.12);
+  --dl-warn:#8A6410;--dl-warn-soft:rgba(138,100,16,.13);
+  --dl-no:#8E3A32;  --dl-no-soft:rgba(142,58,50,.11);
+  --dl-fd:"Poppins",system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  --dl-fb:inherit;
+  --dl-fm:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --dl-measure:90ch; --dl-rail:4.75rem;
+
+  background:var(--dl-paper); color:var(--dl-ink);
+  font-family:var(--dl-fb); font-size:17px; line-height:1.65; font-weight:400;
+  max-width:1040px; margin:0 auto; padding:0 20px 3rem;
+  -webkit-font-smoothing:antialiased; text-align:left;
+}
+@media (prefers-color-scheme:dark){
+  .dl-doc.dl-auto-dark{
+    --dl-paper:#121517; --dl-surface:#191D20; --dl-surface2:#21262A;
+    --dl-ink:#E9EBE6; --dl-ink2:#A6AFB4; --dl-ink3:#79838A;
+    --dl-rule:#2C3235; --dl-rule2:#232829;
+    --dl-accent:#74B6D0; --dl-accent-soft:rgba(116,182,208,.14);
+    --dl-ok:#7FB88C;  --dl-ok-soft:rgba(127,184,140,.14);
+    --dl-warn:#D6A748;--dl-warn-soft:rgba(214,167,72,.15);
+    --dl-no:#DD8479;  --dl-no-soft:rgba(221,132,121,.14);
+  }
+}
+.dl-doc *,.dl-doc *::before,.dl-doc *::after{box-sizing:border-box;}
+.dl-doc h1,.dl-doc h2,.dl-doc h3,.dl-doc h4,.dl-doc p,.dl-doc ul,.dl-doc ol,
+.dl-doc dl,.dl-doc dt,.dl-doc dd{margin:0;padding:0;}
+.dl-doc ul,.dl-doc ol{list-style-position:outside;}
+.dl-doc li{margin:0;}
+.dl-doc a{color:var(--dl-accent);text-decoration:underline;text-underline-offset:2px;}
+.dl-doc code,.dl-doc .dl-mono{font-family:var(--dl-fm);font-size:.855em;}
+.dl-doc b,.dl-doc strong{font-weight:600;}
+.dl-doc code{background:var(--dl-accent-soft);color:var(--dl-accent);
+  padding:.1em .34em;border-radius:2px;border:0;}
+
+/* masthead */
+.dl-doc .dl-masthead{padding:2.75rem 0 1.9rem;border-bottom:2px solid var(--dl-ink);}
+.dl-doc .dl-eyebrow{font-family:var(--dl-fm);font-size:.70rem;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--dl-accent);margin:0 0 1.1rem;}
+.dl-doc h1{font-family:var(--dl-fd);font-weight:600;
+  font-size:clamp(1.9rem,5.2vw,2.75rem);line-height:1.04;letter-spacing:-.028em;
+  text-wrap:balance;margin:0 0 1.1rem;color:var(--dl-ink);}
+.dl-doc .dl-standfirst{max-width:var(--dl-measure);font-size:1.14rem;line-height:1.6;
+  color:var(--dl-ink2);margin:0;}
+.dl-doc .dl-standfirst strong{color:var(--dl-ink);font-weight:600;}
+.dl-doc .dl-byline{display:flex;flex-wrap:wrap;gap:.5rem 1.6rem;margin-top:1.9rem;
+  font-family:var(--dl-fm);font-size:.74rem;letter-spacing:.04em;color:var(--dl-ink3);}
+.dl-doc .dl-byline b{color:var(--dl-ink2);font-weight:500;}
+
+/* trap notice */
+.dl-doc .dl-traps{margin:2.5rem 0;border:1px solid var(--dl-rule);
+  border-left:4px solid var(--dl-no);background:var(--dl-surface);padding:1.5rem 1.6rem;}
+.dl-doc .dl-traps h2{font-family:var(--dl-fd);font-size:.82rem;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--dl-no);margin:0 0 .9rem;}
+.dl-doc .dl-traps ol{margin:0;padding-left:1.15rem;display:grid;gap:.6rem;}
+.dl-doc .dl-traps li{max-width:var(--dl-measure);}
+
+/* sections */
+.dl-doc .dl-sec{padding:2.5rem 0 0;}
+.dl-doc .dl-sechead{display:grid;grid-template-columns:var(--dl-rail) 1fr;
+  align-items:baseline;gap:0 1rem;border-top:1px solid var(--dl-rule);
+  padding-top:1.4rem;margin-bottom:1.6rem;}
+.dl-doc .dl-secnum{font-family:var(--dl-fm);font-size:.95rem;font-weight:600;
+  color:var(--dl-accent);letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+.dl-doc .dl-sechead h2{font-family:var(--dl-fd);font-weight:600;
+  font-size:clamp(1.3rem,2.9vw,1.7rem);line-height:1.12;letter-spacing:-.02em;
+  text-wrap:balance;margin:0;color:var(--dl-ink);}
+.dl-doc .dl-secbody{display:grid;grid-template-columns:var(--dl-rail) minmax(0,1fr);gap:0 1rem;}
+.dl-doc .dl-secbody>*{grid-column:2;}
+.dl-doc .dl-secbody>p,.dl-doc .dl-secbody>ul,.dl-doc .dl-secbody>ol{max-width:var(--dl-measure);}
+.dl-doc .dl-secbody>p{margin:0 0 1.05rem;}
+.dl-doc .dl-secbody>ul,.dl-doc .dl-secbody>ol{margin:0 0 1.15rem;padding-left:1.15rem;
+  display:grid;gap:.5rem;}
+.dl-doc h3{font-family:var(--dl-fd);font-weight:600;font-size:1.06rem;
+  letter-spacing:-.005em;margin:1.9rem 0 .7rem;color:var(--dl-ink);}
+.dl-doc .dl-note{font-size:.9rem;color:var(--dl-ink2);border-left:2px solid var(--dl-rule);
+  padding-left:.95rem;margin:0 0 1.2rem;max-width:var(--dl-measure);}
+
+/* chips + ledger */
+.dl-doc .dl-chip{display:inline-block;font-family:var(--dl-fm);font-size:.64rem;
+  font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:.15em .5em;
+  border-radius:2px;white-space:nowrap;}
+.dl-doc .dl-chip.is-in{background:var(--dl-ok-soft);color:var(--dl-ok);}
+.dl-doc .dl-chip.is-part{background:var(--dl-warn-soft);color:var(--dl-warn);}
+.dl-doc .dl-chip.is-out{background:var(--dl-no-soft);color:var(--dl-no);}
+.dl-doc .dl-ledger{display:grid;gap:0;border:1px solid var(--dl-rule);
+  background:var(--dl-surface);margin-bottom:1.4rem;}
+.dl-doc .dl-ledger>div{display:grid;grid-template-columns:7.5rem minmax(0,1fr);
+  gap:.2rem .9rem;padding:.8rem 1rem;border-bottom:1px solid var(--dl-rule2);}
+.dl-doc .dl-ledger>div:last-child{border-bottom:0;}
+.dl-doc .dl-ledger dt{font-family:var(--dl-fd);font-weight:600;font-size:.95rem;
+  grid-column:2;margin:0;color:var(--dl-ink);}
+.dl-doc .dl-ledger .dl-chip{grid-row:1;grid-column:1;align-self:start;margin-top:.18rem;}
+.dl-doc .dl-ledger dd{grid-column:2;margin:0;font-size:.93rem;color:var(--dl-ink2);
+  line-height:1.55;}
+
+/* footer */
+.dl-doc .dl-footer{margin-top:3rem;padding-top:1.6rem;border-top:2px solid var(--dl-ink);
+  font-size:.86rem;color:var(--dl-ink2);}
+.dl-doc .dl-footer p{max-width:var(--dl-measure);margin:0 0 .8rem;}
+.dl-doc .dl-cite{font-family:var(--dl-fm);font-size:.78rem;color:var(--dl-ink3);line-height:1.7;}
+.dl-doc .dl-ref{border-left:2px solid var(--dl-rule);padding-left:.95rem;margin:0 0 1rem;
+  max-width:var(--dl-measure);font-size:.92rem;color:var(--dl-ink2);}
+.dl-doc pre{margin:0 0 1rem;padding:.9rem 1rem;background:var(--dl-surface);
+  border:1px solid var(--dl-rule);overflow-x:auto;font-family:var(--dl-fm);
+  font-size:.78rem;line-height:1.6;color:var(--dl-ink);white-space:pre;}
+
+/* exercises */
+.dl-doc .dl-ex{border:1px solid var(--dl-rule);background:var(--dl-surface);
+  padding:1.5rem 1.6rem;margin-bottom:1.5rem;}
+.dl-doc .dl-ex-n{font-family:var(--dl-fm);font-size:.7rem;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--dl-accent);
+  display:block;margin-bottom:.35rem;}
+.dl-doc .dl-ex h3{margin:0 0 .9rem;font-size:1.18rem;}
+.dl-doc .dl-steps{margin:0;padding-left:1.2rem;display:grid;gap:.5rem;font-size:.95rem;}
+.dl-doc .dl-principle{font-size:.93rem;color:var(--dl-ink2);
+  border-top:1px solid var(--dl-rule2);padding-top:.85rem;margin:.95rem 0 0;}
+.dl-doc .dl-principle b{color:var(--dl-ink);font-weight:600;}
+
+/* diagrams. The SVGs paint from the same custom properties as everything
+   else, so they invert with the page instead of staying light in dark mode. */
+.dl-doc .dl-fig{margin:0 0 1.2rem;}
+.dl-doc .dl-fig svg{display:block;width:100%;height:auto;
+  background:var(--dl-paper);border:1px solid var(--dl-rule);}
+.dl-doc .dl-fig figcaption{font-family:var(--dl-fm);font-size:.68rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--dl-ink3);margin-top:.55rem;}
+
+/* Large screens. Most sizes here are in rem, which is relative to the ROOT
+   font size, not to .dl-doc — so raising .dl-doc alone would scale the body
+   copy and leave the byline, notes and references behind. They are stepped up
+   together. */
+@media (min-width:1280px){
+  .dl-doc{font-size:18.5px;max-width:1140px;}
+  .dl-doc .dl-standfirst{font-size:1.22rem;}
+  .dl-doc .dl-byline{font-size:.84rem;}
+  .dl-doc h3{font-size:1.14rem;}
+  .dl-doc .dl-note{font-size:.97rem;}
+  .dl-doc .dl-ref{font-size:1rem;}
+  .dl-doc .dl-cite{font-size:.86rem;}
+  .dl-doc pre{font-size:.86rem;}
+  .dl-doc .dl-ledger dt{font-size:1.02rem;}
+  .dl-doc .dl-ledger dd{font-size:1rem;}
+  .dl-doc .dl-chip{font-size:.70rem;}
+  .dl-doc .dl-traps h2{font-size:.88rem;}
+  .dl-doc .dl-steps{font-size:1rem;}
+  .dl-doc .dl-principle{font-size:.99rem;}
+  .dl-doc .dl-ex-n{font-size:.76rem;}
+}
+@media (max-width:720px){
+  .dl-doc{--dl-rail:0px;font-size:16px;}
+  .dl-doc .dl-sechead{grid-template-columns:1fr;gap:.35rem;}
+  .dl-doc .dl-secbody{grid-template-columns:minmax(0,1fr);}
+  .dl-doc .dl-secbody>*{grid-column:1;}
+  .dl-doc .dl-traps,.dl-doc .dl-ex{padding:1.15rem;}
+}
+@media (max-width:560px){
+  .dl-doc .dl-ledger>div{grid-template-columns:1fr;}
+  .dl-doc .dl-ledger .dl-chip{grid-row:auto;grid-column:1;justify-self:start;margin-bottom:.3rem;}
+  .dl-doc .dl-ledger dt,.dl-doc .dl-ledger dd{grid-column:1;}
+}
+</style>
+
+<div class="dl-doc dl-auto-dark">
+
+  <div class="dl-masthead">
+    <p class="dl-eyebrow">Daylight Lab &middot; In brief</p>
+    <h1>Method notes in brief</h1>
+    <p class="dl-standfirst">The short version: what the tool computes, and &mdash; the part that
+      matters most when you cite it &mdash; <strong>what it does not model at all</strong>. Two
+      independent engines are provided, and the disagreement between them is itself a teaching
+      device. The <a href="https://github.com/arch85-km/daylight-lab" target="_blank" rel="noopener">full
+      method notes</a> give the measurements, the source values and the references behind every
+      statement here.</p>
+    <div class="dl-byline">
+      <span><b>Audience</b> Architecture students and staff</span>
+      <span><b>Engines</b> Raytraced daylight coefficients &middot; Split-flux (BRE)</span>
+      <span><b>Runs</b> Entirely in the browser</span>
+      <span><b>Version</b> 1.0.0</span>
+    </div>
+  </div>
+
+  <div class="dl-traps">
+    <h2>Four things to know before you cite a number</h2>
+    <ol>
+      <li><b>The obstruction angle is read by the split-flux engine only.</b> Set it while the
+        raytraced engine is selected and nothing changes &mdash; that engine has no external
+        obstruction of any kind in its scene.</li>
+      <li><b>Every surface reflects diffusely.</b> There is no specular reflection anywhere, so a
+        polished light shelf, a mirrored louvre or a glossy floor will be under-predicted.</li>
+      <li><b>sDA and ASE here are not LM-83 results.</b> LM-83 requires modelled blind operation;
+        this tool has no blinds and no shading schedule.</li>
+      <li><b>Design sky illuminance does nothing under CIE Clear or CIE Intermediate.</b> Those two
+        skies take their absolute levels from the tool's own clear-sky model, and the setting is
+        overwritten. It governs CIE Overcast and Uniform only.</li>
+    </ol>
+  </div>
+
+  <section class="dl-sec">
+    <div class="dl-sechead"><span class="dl-secnum"></span><h2>What it calculates</h2></div>
+    <div class="dl-secbody">
+      <p>Six metrics. Two are instantaneous, computed for the single date and time on the scrubber
+        &mdash; <b>illuminance</b> in lux and <b>daylight factor</b> as a percentage. Four are
+        annual, computed over the occupied hours of a whole year from one pass: <b>useful daylight
+        illuminance</b>, <b>daylight autonomy</b> (and sDA from it), <b>annual sunlight
+        exposure</b>, and <b>direct sun hours</b>.</p>
+      <p>The raytraced engine works by daylight coefficients over Tregenza/Reinhart sky patches,
+        with one extra column for the ground. The split-flux engine is the BRE hand method &mdash;
+        sky component, externally reflected component and internally reflected component, added.
+        The statistics panel also reports the BS 8206-2 average daylight factor, which is a genuine
+        hand-calculable cross-check on the grid mean.</p>
+      <p class="dl-note"><b>A detail worth knowing before you quote a UDI figure.</b> Hours when
+        the sun is below the horizon still count as occupied hours, and they fall into the lowest
+        bin. An 08:00&ndash;18:00 occupancy in a London winter therefore carries genuinely dark
+        hours in the denominator.</p>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-sechead"><span class="dl-secnum"></span><h2>Two engines, and where they disagree</h2></div>
+    <div class="dl-secbody">
+      <p>Mean daylight factor over the same grid, from the tool's own audit. Split-flux sits a few
+        per cent high on side-lit cases and low on skylights, so that offset is the baseline, not
+        zero:</p>
+      <div class="dl-ledger">
+        <div><span class="dl-chip is-in">Close</span><dt>Large window &middot; bilateral &middot; overhang</dt>
+          <dd>+4%, +6% and 0%. Either engine will do.</dd></div>
+        <div><span class="dl-chip is-part">Diverging</span><dt>Deep plan &middot; louvre bank &middot; skylights</dt>
+          <dd>+7%, +12% and &minus;7%. The split-flux method degrades as shading structure gets finer.</dd></div>
+        <div><span class="dl-chip is-out">Far apart</span><dt>Thick wall, 0.9 m</dt>
+          <dd><b>+108%.</b> Split-flux never sees the reveal, so a deep reveal moves one engine and not the other.</dd></div>
+      </div>
+      <p>Use the raytracer for anything with fine shading structure or a deep reveal. Use
+        split-flux when you want a number a student can check by hand.</p>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-sechead"><span class="dl-secnum"></span><h2>Not modelled at all</h2></div>
+    <div class="dl-secbody">
+      <p><b>Context geometry</b> &mdash; no surrounding buildings, no trees, no terrain, no
+        courtyard walls. The scene contains the room and nothing else. <b>Specular reflection</b>
+        &mdash; every surface is Lambertian, so light-shelf studies in particular will mislead.
+        <b>Directional glazing</b> &mdash; transmittance is diffuse-equivalent and constant with
+        angle, so no Fresnel, no BSDF, no prismatic glazing. <b>Blinds and controls</b> &mdash; no
+        shading schedule, no electric lighting, no daylight-linked dimming. <b>Interior
+        content</b> &mdash; no furniture, no partitions; the workplane is a transparent sensor
+        plane that neither blocks nor bounces light. <b>Colour</b> and <b>glare</b> &mdash; grey
+        and photopic throughout, and no DGP, DGI or any luminance-based glare metric.</p>
+      <p class="dl-note">There is no ground plane in the raytraced scene, so the building casts no
+        shadow on its own ground in the calculation. The shadows in the 3D view are renderer
+        shadows and play no part in the numbers.</p>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-sechead"><span class="dl-secnum"></span><h2>How exact the numbers are</h2></div>
+    <div class="dl-secbody">
+      <p>Measured by the tool's own audit, which drives the shipped file in headless Chromium and
+        compares against results derived independently of the code. An unobstructed point reads
+        100.0017% against an exact 100%; rectangular roof apertures match closed-form
+        configuration factors to &plusmn;0.12%. What the browser approximations cost:</p>
+      <div class="dl-ledger">
+        <div><span class="dl-chip is-out">up to &minus;20%</span><dt>Bounce truncation</dt>
+          <dd>The most significant approximation. In a deliberately bright room, going from 4 to 12
+            bounces raises mean DF by 20%. Shipped tiers use 1&ndash;5, so rooms with very light
+            surfaces read low. Above &rho; &asymp; 0.8, use the Fine tier or read the result as a
+            lower bound.</dd></div>
+        <div><span class="dl-chip is-part">&plusmn;0.005</span><dt>Monte-Carlo noise</dt>
+          <dd>On the mean DF at Standard quality. Re-running the same model will not give a
+            bit-identical answer, so quote to one decimal place, not three.</dd></div>
+        <div><span class="dl-chip is-part">&minus;1.1%</span><dt>One sun-disc sample per annual hour</dt>
+          <dd>A binary shadow with no penumbra. This is the accuracy floor for ASE and sun hours
+            near a shadow edge.</dd></div>
+        <div><span class="dl-chip is-in">1.6%</span><dt>Grid symmetry</dt>
+          <dd>Mean left&ndash;right discrepancy on a symmetric room. This is the noise floor, not a
+            bug &mdash; it is why you read the field, not individual points.</dd></div>
+      </div>
+      <p>The default 0.5 m grid spacing is comfortably grid-independent for an ordinary room: mean
+        DF moves from 9.362% at 1 m to 9.347% at 0.5 m to 9.231% at 0.25 m.</p>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-sechead"><span class="dl-secnum"></span><h2>Against Radiance and DIALux</h2></div>
+    <div class="dl-secbody">
+      <p class="dl-note"><b>Provenance.</b> Everything else here is read from the source code. This
+        section is not, and cannot be: the code says nothing about how Radiance or DIALux work.
+        Check it against their documentation before relying on it.</p>
+      <p><b>Should agree</b> on method family (daylight coefficients over Tregenza/Reinhart patches,
+        as in Radiance's <span class="dl-mono">rcontrib</span>), on solar geometry, on simple
+        diffuse cases, and on the hand method &mdash; the split-flux ADF <i>is</i> the BS 8206-2
+        calculation, coefficient table and all.</p>
+      <p><b>Will diverge</b> on anything urban (this scene contains only the room), on specular
+        surfaces, on complex fenestration, and in very light rooms, where Radiance is typically run
+        at more bounces than the shipped tiers allow.</p>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-sechead"><span class="dl-secnum"></span><h2>Three exercises</h2></div>
+    <div class="dl-secbody">
+      <p>Each isolates one variable and holds everything else fixed. Run all three on the
+        <b>Raytraced</b> engine at <b>Standard</b> quality unless told otherwise, and let the
+        calculation settle before reading the statistics panel.</p>
+
+      <div class="dl-ex">
+        <span class="dl-ex-n">Exercise 01</span>
+        <h3>Window head height, not window area, sets how deep daylight goes</h3>
+        <figure class="dl-fig">
+<svg viewBox="0 0 720 300" role="img" aria-label="Two sections of the same deep room. In the first the window sill is low and the head is at 2.4 metres; in the second the sill is raised so the head is at 3.4 metres. The glazed area is identical, but daylight reaches noticeably deeper in the second.">
+  <defs>
+    <marker id="dl-f1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="var(--dl-accent)"/></marker>
+  </defs>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="var(--dl-ink)">
+    <text x="16" y="22">CASE A &#183; sill 0.9 m, head 2.4 m</text>
+    <text x="16" y="172">CASE B &#183; sill 1.9 m, head 3.4 m</text>
+  </g>
+  <!-- case A -->
+  <line x1="60" y1="140" x2="680" y2="140" stroke="var(--dl-ink)" stroke-width="1.5"/>
+  <line x1="60" y1="50" x2="680" y2="50" stroke="var(--dl-ink)" stroke-width="1.5"/>
+  <line x1="60" y1="50" x2="60" y2="140" stroke="var(--dl-ink)" stroke-width="1.5"/>
+  <rect x="56" y="80" width="8" height="38" fill="var(--dl-accent-soft)" stroke="var(--dl-accent)" stroke-width="1.6"/>
+  <line x1="60" y1="121" x2="680" y2="121" stroke="var(--dl-ink3)" stroke-width="1" stroke-dasharray="4 4"/>
+  <path d="M66 80 L258 121" stroke="var(--dl-accent)" stroke-width="2" fill="none" marker-end="url(#dl-f1-a)"/>
+  <line x1="262" y1="60" x2="262" y2="134" stroke="var(--dl-no)" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5">
+    <text x="270" y="72" fill="var(--dl-no)">DF falls below 2% here</text>
+    <text x="270" y="131" fill="var(--dl-ink3)">workplane 0.75 m</text>
+  </g>
+  <!-- case B -->
+  <line x1="60" y1="290" x2="680" y2="290" stroke="var(--dl-ink)" stroke-width="1.5"/>
+  <line x1="60" y1="200" x2="680" y2="200" stroke="var(--dl-ink)" stroke-width="1.5"/>
+  <line x1="60" y1="200" x2="60" y2="290" stroke="var(--dl-ink)" stroke-width="1.5"/>
+  <rect x="56" y="205" width="8" height="38" fill="var(--dl-accent-soft)" stroke="var(--dl-accent)" stroke-width="1.6"/>
+  <line x1="60" y1="271" x2="680" y2="271" stroke="var(--dl-ink3)" stroke-width="1" stroke-dasharray="4 4"/>
+  <path d="M66 205 L378 271" stroke="var(--dl-accent)" stroke-width="2" fill="none" marker-end="url(#dl-f1-a)"/>
+  <line x1="382" y1="210" x2="382" y2="284" stroke="var(--dl-ok)" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5">
+    <text x="390" y="222" fill="var(--dl-ok)">2% reaches this much deeper</text>
+    <text x="390" y="281" fill="var(--dl-ink3)">same glazed area</text>
+  </g>
+</svg>
+<figcaption>Section. Only the sill moved &mdash; width and height are unchanged, so the glazed area is identical.</figcaption>
+        </figure>
+        <ol class="dl-steps">
+          <li>Room <span class="dl-mono">L 6.0 &middot; W 12.0 &middot; H 3.6 m</span>, grid spacing
+            0.25&nbsp;m, workplane 0.75&nbsp;m. Disable every opening except one south window, set
+            to <span class="dl-mono">w 5.0 &middot; h 1.5 &middot; sill 0.9</span> &mdash; a head
+            height of 2.4&nbsp;m.</li>
+          <li>Sky <b>CIE Overcast</b>, metric <b>DF</b>. Note the distance from the window at which
+            DF falls below 2%, and record the mean and the min:mean uniformity.</li>
+          <li>Now change <b>only the sill</b>, to 1.9&nbsp;m. Height and width are unchanged, so the
+            glazed area is identical &mdash; but the head is now 3.4&nbsp;m. Re-read all three.</li>
+        </ol>
+        <p class="dl-principle"><b>Principle.</b> Daylight penetration depth scales with the height
+          of the window <b>head</b> above the workplane, not with glazed area. Because you changed
+          nothing else, any difference is attributable to head height alone. This is the geometric
+          basis of the rule of thumb that useful daylight reaches roughly 1.5&ndash;2&times; the
+          head height into a side-lit room.</p>
+      </div>
+
+      <div class="dl-ex">
+        <span class="dl-ex-n">Exercise 02</span>
+        <h3>A shading device that lowers the daylight factor can improve the daylight</h3>
+        <figure class="dl-fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="Adding an overhang lowers mean daylight factor but moves hours out of the over-lit band and into the useful one. Daylight factor has no upper bound; useful daylight illuminance does.">
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="var(--dl-ink)">
+    <text x="16" y="24">DAYLIGHT FACTOR &#183; no upper bound</text>
+    <text x="392" y="24">UDI &#183; bounded above and below</text>
+  </g>
+  <line x1="360" y1="14" x2="360" y2="216" stroke="var(--dl-rule)" stroke-width="1"/>
+  <!-- DF bars -->
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink3)">
+    <text x="16" y="60">before</text><text x="16" y="110">after</text>
+  </g>
+  <rect x="80" y="46" width="210" height="20" fill="var(--dl-accent-soft)" stroke="var(--dl-accent)" stroke-width="1.3"/>
+  <rect x="80" y="96" width="150" height="20" fill="var(--dl-accent-soft)" stroke="var(--dl-accent)" stroke-width="1.3"/>
+  <text x="240" y="111" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-no)">falls</text>
+  <text x="16" y="150" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink3)">DF cannot express</text>
+  <text x="16" y="164" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink3)">&#8220;too much light&#8221;, so it</text>
+  <text x="16" y="178" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink3)">falls whenever you shade.</text>
+  <!-- UDI stacked bars -->
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink3)">
+    <text x="392" y="60">before</text><text x="392" y="110">after</text>
+  </g>
+  <g stroke-width="1.3">
+    <rect x="456" y="46" width="110" height="20" fill="var(--dl-ok-soft)" stroke="var(--dl-ok)"/>
+    <rect x="566" y="46" width="110" height="20" fill="var(--dl-no-soft)" stroke="var(--dl-no)"/>
+    <rect x="456" y="96" width="170" height="20" fill="var(--dl-ok-soft)" stroke="var(--dl-ok)"/>
+    <rect x="626" y="96" width="50"  height="20" fill="var(--dl-no-soft)" stroke="var(--dl-no)"/>
+  </g>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10">
+    <text x="470" y="82" fill="var(--dl-ok)">useful</text><text x="586" y="82" fill="var(--dl-no)">too high</text>
+    <text x="470" y="132" fill="var(--dl-ok)">useful grows</text><text x="614" y="132" fill="var(--dl-no)">shrinks</text>
+  </g>
+  <text x="392" y="164" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink3)">UDI has a ceiling, so shading moves</text>
+  <text x="392" y="178" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink3)">hours from over-lit into useful.</text>
+  <text x="16" y="210" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ink)">The same design change moves the two metrics in opposite directions.</text>
+</svg>
+<figcaption>The question you are asking decides which metric to quote.</figcaption>
+        </figure>
+        <ol class="dl-steps">
+          <li>Reset to the default studio classroom, London, with all its openings. Metric <b>DF</b>:
+            record the mean and the percentage of area above 2%.</li>
+          <li>Switch to <b>UDI</b>, thresholds 150&nbsp;/&nbsp;300&nbsp;/&nbsp;500&nbsp;/&nbsp;3000,
+            occupied hours 08&ndash;18. Record the <i>Too high</i> mean, then the
+            <i>Useful &mdash; in range + high</i> mean.</li>
+          <li>Add a horizontal overhang to the south window only:
+            <span class="dl-mono">depth 0.6 &middot; count 1 &middot; offset 0.10 &middot; extend 0.4 &middot; tilt 0</span>.
+            Re-read all four numbers.</li>
+          <li>Finally, switch the engine to <b>Split-flux</b> and back, comparing the DF mean each time.</li>
+        </ol>
+        <p class="dl-principle"><b>Principle.</b> DF has no upper bound and cannot express
+          &ldquo;too much light&rdquo;, so it falls whenever you shade. UDI has an upper bound, so
+          shading can move hours out of the over-lit bin and into the useful one. <b>The two metrics
+          can move in opposite directions for the same design change</b>, and knowing which question
+          you are asking decides which one to quote. Step 4 adds a second lesson: on a simple
+          overhang the two engines sit about 3% apart, but on a five-blade louvre bank the audit
+          measures 12% &mdash; split-flux degrades as shading structure gets finer.</p>
+      </div>
+
+      <div class="dl-ex">
+        <span class="dl-ex-n">Exercise 03</span>
+        <h3>Why an overhang works on the south facade and a fin is needed on the east</h3>
+        <figure class="dl-fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="South sun at midday is high, so a shallow horizontal overhang intercepts it. East sun arrives low and nearly normal to the glass, passing under an overhang of any reasonable depth, so only vertical fins help.">
+  <defs>
+    <marker id="dl-f3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="var(--dl-warn)"/></marker>
+  </defs>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="var(--dl-ink)">
+    <text x="16" y="22">SOUTH &#183; section &#183; sun high</text>
+    <text x="392" y="22">EAST &#183; plan &#183; sun low and near-normal</text>
+  </g>
+  <line x1="360" y1="14" x2="360" y2="228" stroke="var(--dl-rule)" stroke-width="1"/>
+  <!-- south section -->
+  <line x1="60" y1="200" x2="330" y2="200" stroke="var(--dl-ink)" stroke-width="1.5"/>
+  <line x1="120" y1="60" x2="120" y2="200" stroke="var(--dl-ink)" stroke-width="1.8"/>
+  <rect x="116" y="96" width="8" height="70" fill="var(--dl-accent-soft)" stroke="var(--dl-accent)" stroke-width="1.5"/>
+  <line x1="120" y1="92" x2="166" y2="92" stroke="var(--dl-ink)" stroke-width="3.5"/>
+  <text x="170" y="89" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" fill="var(--dl-ink3)">overhang</text>
+  <line x1="238" y1="34" x2="170" y2="88" stroke="var(--dl-warn)" stroke-width="2" marker-end="url(#dl-f3-a)"/>
+  <line x1="272" y1="52" x2="204" y2="106" stroke="var(--dl-warn)" stroke-width="2" marker-end="url(#dl-f3-a)"/>
+  <path d="M150 190 a 42 42 0 0 0 30 -30" fill="none" stroke="var(--dl-ink3)" stroke-width="1" stroke-dasharray="3 3"/>
+  <text x="156" y="176" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" fill="var(--dl-ink3)">high altitude</text>
+  <rect x="124" y="96" width="42" height="70" fill="var(--dl-ok-soft)"/>
+  <text x="128" y="186" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-ok)">glass shaded</text>
+  <!-- east plan -->
+  <line x1="452" y1="60" x2="452" y2="200" stroke="var(--dl-ink)" stroke-width="1.8"/>
+  <rect x="448" y="86" width="8" height="84" fill="var(--dl-accent-soft)" stroke="var(--dl-accent)" stroke-width="1.5"/>
+  <g stroke="var(--dl-ink)" stroke-width="3.5">
+    <line x1="452" y1="92" x2="486" y2="92"/><line x1="452" y1="118" x2="486" y2="118"/>
+    <line x1="452" y1="144" x2="486" y2="144"/><line x1="452" y1="170" x2="486" y2="170"/>
+  </g>
+  <text x="492" y="80" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10" fill="var(--dl-ink3)">vertical fins</text>
+  <g stroke="var(--dl-warn)" stroke-width="2" marker-end="url(#dl-f3-a)">
+    <line x1="648" y1="104" x2="500" y2="104"/><line x1="648" y1="132" x2="500" y2="132"/><line x1="648" y1="158" x2="500" y2="158"/>
+  </g>
+  <text x="498" y="214" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--dl-no)">an overhang barely intersects this</text>
+</svg>
+<figcaption>Solar altitude, not orientation alone, decides which device works.</figcaption>
+        </figure>
+        <ol class="dl-steps">
+          <li>Default studio classroom, London. Metric <b>Direct sun hours</b>; wait for the annual
+            run. Record mean and maximum, then switch to <b>ASE</b>
+            (<span class="dl-mono">1000 lux / 250 h</span>) and record the percentage of area.</li>
+          <li>Set <b>Project north to 90&deg;</b> &mdash; the same room, rotated so the large opening
+            faces east. Re-run and record both figures again.</li>
+          <li>Return north to 0&deg;. Add a horizontal overhang of depth 0.8 to the east window and
+            note how little ASE changes. Remove it and add vertical fins instead:
+            <span class="dl-mono">depth 0.4 &middot; count 4 &middot; side both</span>. Re-read ASE.</li>
+          <li>Turn on <b>Solar rays</b> and scrub the time slider through a summer morning to see why.</li>
+        </ol>
+        <p class="dl-principle"><b>Principle.</b> Solar altitude, not orientation alone, decides
+          which device works. South sun at midday is high, so a shallow horizontal projection cuts
+          it. East and west sun arrives low and nearly normal to the glass, where a horizontal
+          overhang of any reasonable depth barely intersects it and only vertical elements help.
+          The ray view makes the geometry visible rather than asserted.</p>
+      </div>
+
+      <p class="dl-note"><b>A caution for all three: quote differences, not absolute values.</b>
+        Monte-Carlo noise at Standard quality is around &plusmn;0.005 on the mean DF, so a change
+        smaller than about 0.1 percentage points is not a result.</p>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-sechead"><span class="dl-secnum"></span><h2>Where it stops</h2></div>
+    <div class="dl-secbody">
+      <p>For a compliance submission, use IESVE, Radiance via Ladybug and Honeybee, or another
+        validated tool. This one is built to teach relationships and orders of magnitude. Everything
+        on this page is extracted from the tool's source and from its engine validation report,
+        which is regenerated by an automated audit driving the shipped file in headless Chromium.
+        Where a figure is quoted it is measured, not estimated.</p>
+    </div>
+  </section>
+
+  <div class="dl-footer">
+
+    <h3>Licence</h3>
+    <p>&copy; Karam Al-Obaidi. The app is licensed <b>MIT</b>; this documentation is
+      <b><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></b>.
+      Both permit any use, including commercial, and ask only that you credit the author. The tool
+      bundles <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> (also MIT),
+      whose notice travels inside the application file itself.</p>
+    <p>A model you make with the tool is <b>yours</b>. Neither licence claims anything over your
+      room, your results or the images you export.</p>
+
+    <h3 id="how-to-cite" style="scroll-margin-top:100px;">How to cite</h3>
+    <p>Cite it as software. Keeping the copyright notice in the file satisfies the licence; a
+      citation is the scholarly act on top of that.</p>
+    <p class="dl-ref">Al-Obaidi, K. M. (2026). <i>Daylight Lab: A browser-based daylight simulation
+      tool</i> (Version 1.0.0) [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.22796356" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.22796356</a></p>
+<pre>@software{alobaidi2026daylightlab,
+  author    = {Al-Obaidi, Karam M.},
+  title     = {Daylight Lab: A browser-based daylight simulation tool},
+  year      = {2026},
+  version   = {1.0.0},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.22796356},
+  url       = {https://karam.me.uk/applications/daylight-lab/},
+  note      = {Code MIT licensed; accompanying material CC BY 4.0}
+}</pre>
+    <p>That DOI names this release. To cite the software in general rather than version 1.0.0, use
+      the concept DOI
+      <a href="https://doi.org/10.5281/zenodo.22796355" target="_blank" rel="noopener">10.5281/zenodo.22796355</a>,
+      which always resolves to the newest version.</p>
+    <p><b>Report four things alongside any figure</b> taken from the tool: the <b>engine</b>, the
+      <b>quality tier</b>, the <b>sky model</b> and the <b>climate file</b>. All four change the
+      numbers, and a value quoted without them cannot be reproduced. Every exported image carries
+      them in its title block, and the CSV export carries them as header comments.</p>
+
+    <h3>References</h3>
+    <p>What the sky models, the solar algorithm and the metrics are drawn from. These are the
+      sources the code itself names; where it names none &mdash; the glazing and reflectance
+      presets among them &mdash; none is listed. The code names each source but not its
+      bibliographic detail, so that was added from the published record.</p>
+
+    <p class="dl-ref"><b>CIE S 011/E:2003</b> (= ISO 15469:2004). <i>Spatial Distribution of
+      Daylight &mdash; CIE Standard General Sky</i>. Vienna. <span style="color:var(--dl-ink3)">&mdash;
+      All fifteen types are in the code, four are offered in the interface, and type 1, the overcast
+      sky, is the basis of every daylight factor reported.</span></p>
+    <p class="dl-ref">Perez, R., Seals, R. &amp; Michalsky, J. (1993). &lsquo;All-weather model for
+      sky luminance distribution&rsquo;, <i>Solar Energy</i>, 50(3), pp. 235&ndash;245.
+      <span style="color:var(--dl-ink3)">&mdash; The all-weather sky, used whenever a climate file
+      drives the calculation.</span></p>
+    <p class="dl-ref">Tregenza, P. R. &amp; Waters, I. M. (1983). &lsquo;Daylight
+      coefficients&rsquo;, <i>Lighting Research &amp; Technology</i>, 15(2), pp. 65&ndash;71.
+      <span style="color:var(--dl-ink3)">&mdash; The method the whole raytraced engine rests on.</span></p>
+    <p class="dl-ref">Tregenza, P. R. (1987). &lsquo;Subdivision of the sky hemisphere for luminance
+      measurements&rsquo;, <i>Lighting Research &amp; Technology</i>, 19(1), pp. 13&ndash;14.
+      <span style="color:var(--dl-ink3)">&mdash; The 145-patch subdivision, a separate contribution
+      from the 1983 paper.</span></p>
+    <p class="dl-ref">Reinhart, C. F. &amp; Walkenhorst, O. (2001). <i>Energy and Buildings</i>,
+      33(7), pp. 683&ndash;697; and Bourgeois, D., Reinhart, C. F. &amp; Ward, G. (2008).
+      <i>Building Research &amp; Information</i>, 36(1), pp. 68&ndash;82.
+      <span style="color:var(--dl-ink3)">&mdash; The DAYSIM workflow the engine follows, and where
+      the MF:<i>n</i> generalisation was formalised.</span></p>
+    <p class="dl-ref">NOAA Solar Calculator, after Meeus, J. (1998). <i>Astronomical Algorithms</i>,
+      2nd edn. Willmann-Bell; and Kasten, F. &amp; Young, A. T. (1989). <i>Applied Optics</i>,
+      28(22), pp. 4735&ndash;4738. <span style="color:var(--dl-ink3)">&mdash; Solar position, checked
+      against published values for four cities and agreeing to 0.1&deg;; and relative optical air
+      mass.</span></p>
+    <p class="dl-ref">Nabil, A. &amp; Mardaljevic, J. (2005). &lsquo;Useful daylight illuminance&rsquo;,
+      <i>Lighting Research &amp; Technology</i>, 37(1), pp. 41&ndash;59.
+      <span style="color:var(--dl-ink3)">&mdash; UDI. The default five-interval scheme extends their
+      original 100&ndash;2000 lux proposal, which the tool also offers as a preset.</span></p>
+    <p class="dl-ref"><b>IES LM-83-12</b> and <b>LEED v4</b> (EQ Credit: Daylight).
+      <span style="color:var(--dl-ink3)">&mdash; sDA and ASE, and the credit thresholds quoted in the
+      interface. The tool omits the blind-operation schedule LM-83 requires, which is why both
+      metrics are described throughout as indicative rather than as submissions. LM-83-23 has since
+      revised the method.</span></p>
+    <p class="dl-ref"><b>BS 8206-2:2008</b>, <i>Code of practice for daylighting</i>. BSI.
+      <b>Withdrawn</b>, superseded by BS EN 17037:2018+A1:2021.
+      <span style="color:var(--dl-ink3)">&mdash; The split-flux method and the average daylight
+      factor. Cite it as a withdrawn standard, and check BS EN 17037 for current practice.</span></p>
+    <p class="dl-ref"><b>BRE (1986).</b> <i>Estimating daylight in buildings: Part 2</i> (Digest
+      310). <span style="color:var(--dl-ink3)">&mdash; The C coefficient table for the internally
+      reflected component. The tool extends the published 0&ndash;80&deg; table to 90&deg; with a
+      constant 5, and scales the IRC by the shading devices; both are the tool's own extensions,
+      not part of the method. Originally derived in Hopkinson, Longmore &amp; Petherbridge
+      (1954).</span></p>
+
+    <p class="dl-ref"><b>Two entries that are deliberately not citations.</b>
+      <span style="color:var(--dl-ink3)">Perez et al. (1990) is <i>named in the code but not
+      implemented</i> &mdash; a fitted luminous-efficacy curve stands in for it. And no ASHRAE
+      publication is cited: the code calls its fallback &ldquo;ASHRAE-style&rdquo;, but the formula
+      extinguishes the beam through a Linke turbidity factor, which the ASHRAE clear-sky model does
+      not use. Treat the synthetic year as the tool's own construction &mdash; deterministic and
+      reproducible, but not a real climate and not a standard one.</span></p>
+
+    <p class="dl-cite">Every figure above is read from the tool's source or measured by its own
+      audit. Where a figure would have needed a value the code does not contain, it was removed
+      rather than estimated.</p>
+
+  </div>
+
+</div>
