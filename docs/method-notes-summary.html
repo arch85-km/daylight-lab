@@ -97,6 +97,9 @@
   display:grid;gap:.5rem;}
 .dl-doc h3{font-family:var(--dl-fd);font-weight:600;font-size:1.06rem;
   letter-spacing:-.005em;margin:1.9rem 0 .7rem;color:var(--dl-ink);}
+.dl-doc h4{font-family:var(--dl-fm);font-weight:600;font-size:.74rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dl-ink3);margin:1.7rem 0 .7rem;}
+.dl-doc .dl-footer h4:first-of-type{margin-top:1.1rem;}
 .dl-doc .dl-note{font-size:.9rem;color:var(--dl-ink2);border-left:2px solid var(--dl-rule);
   padding-left:.95rem;margin:0 0 1.2rem;max-width:var(--dl-measure);}
 
@@ -618,6 +621,7 @@
       presets among them &mdash; none is listed. The code names each source but not its
       bibliographic detail, so that was added from the published record.</p>
 
+    <h4>Sky models</h4>
     <p class="dl-ref"><b>CIE S 011/E:2003</b> (= ISO 15469:2004). <i>Spatial Distribution of
       Daylight &mdash; CIE Standard General Sky</i>. Vienna. <span style="color:var(--dl-ink3)">&mdash;
       All fifteen types are in the code, four are offered in the interface, and type 1, the overcast
@@ -626,6 +630,7 @@
       sky luminance distribution&rsquo;, <i>Solar Energy</i>, 50(3), pp. 235&ndash;245.
       <span style="color:var(--dl-ink3)">&mdash; The all-weather sky, used whenever a climate file
       drives the calculation.</span></p>
+    <h4>Daylight coefficients</h4>
     <p class="dl-ref">Tregenza, P. R. &amp; Waters, I. M. (1983). &lsquo;Daylight
       coefficients&rsquo;, <i>Lighting Research &amp; Technology</i>, 15(2), pp. 65&ndash;71.
       <span style="color:var(--dl-ink3)">&mdash; The method the whole raytraced engine rests on.</span></p>
@@ -638,11 +643,13 @@
       <i>Building Research &amp; Information</i>, 36(1), pp. 68&ndash;82.
       <span style="color:var(--dl-ink3)">&mdash; The DAYSIM workflow the engine follows, and where
       the MF:<i>n</i> generalisation was formalised.</span></p>
+    <h4>Solar position</h4>
     <p class="dl-ref">NOAA Solar Calculator, after Meeus, J. (1998). <i>Astronomical Algorithms</i>,
       2nd edn. Willmann-Bell; and Kasten, F. &amp; Young, A. T. (1989). <i>Applied Optics</i>,
       28(22), pp. 4735&ndash;4738. <span style="color:var(--dl-ink3)">&mdash; Solar position, checked
       against published values for four cities and agreeing to 0.1&deg;; and relative optical air
       mass.</span></p>
+    <h4>The metrics</h4>
     <p class="dl-ref">Nabil, A. &amp; Mardaljevic, J. (2005). &lsquo;Useful daylight illuminance&rsquo;,
       <i>Lighting Research &amp; Technology</i>, 37(1), pp. 41&ndash;59.
       <span style="color:var(--dl-ink3)">&mdash; UDI. The default five-interval scheme extends their
@@ -652,6 +659,7 @@
       interface. The tool omits the blind-operation schedule LM-83 requires, which is why both
       metrics are described throughout as indicative rather than as submissions. LM-83-23 has since
       revised the method.</span></p>
+    <h4>The hand method</h4>
     <p class="dl-ref"><b>BS 8206-2:2008</b>, <i>Code of practice for daylighting</i>. BSI.
       <b>Withdrawn</b>, superseded by BS EN 17037:2018+A1:2021.
       <span style="color:var(--dl-ink3)">&mdash; The split-flux method and the average daylight
@@ -663,6 +671,7 @@
       not part of the method. Originally derived in Hopkinson, Longmore &amp; Petherbridge
       (1954).</span></p>
 
+    <h4>Named, but not cited</h4>
     <p class="dl-ref"><b>Two entries that are deliberately not citations.</b>
       <span style="color:var(--dl-ink3)">Perez et al. (1990) is <i>named in the code but not
       implemented</i> &mdash; a fitted luminous-efficacy curve stands in for it. And no ASHRAE
