@@ -295,6 +295,10 @@ DaylightCore.prototype.annualStep = function (st, nDays) {
     var md = fromDoy(st.day + 1);
     for (var h = st.hStart; h < st.hEnd; h++) {
       var sun = sunPosition(site, site.year || 2001, md.month, md.day, h + 0.5);
+      // sunPosition() returns a direction built at project north 0, because it
+      // has no access to the model. The live view re-rotates it; the year has
+      // to do the same or every annual metric ignores project north.
+      if (site.northAngle) sun.dir = sunVector(sun.altitude, sun.azimuth, site.northAngle);
       st.hours++;
       if (!sun.up) {
         for (var q0 = 0; q0 < n; q0++) udi[q0 * 5] += 1;

@@ -9,8 +9,9 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "validate": "node test/validate.mjs",
-    "all": "npm run build && npm run validate && npm run audit",
-    "audit": "node test/audit.mjs"
+    "all": "npm run build && npm run validate && npm run dirty && npm run audit",
+    "audit": "node test/audit.mjs",
+    "dirty": "node test/dirty.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1"

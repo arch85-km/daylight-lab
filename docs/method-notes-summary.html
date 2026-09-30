@@ -293,7 +293,7 @@
     <div class="dl-secbody">
       <p>Measured by the tool's own audit, which drives the shipped file in headless Chromium and
         compares against answers derived independently of the code. The sky integration and the
-        geometry check out: every closed-form benchmark is matched to better than 0.15%. That
+        geometry check out: every closed-form benchmark is matched to &plusmn;0.12%. That
         tests the machinery, not the accuracy of a result in a room &mdash; what actually costs
         you is this:</p>
       <div class="dl-ledger">
@@ -575,18 +575,18 @@
           <li>Default studio classroom, London. Metric <b>Direct sun hours</b>; wait for the annual
             run. Record mean and maximum, then switch to <b>ASE</b>
             (<span class="dl-mono">1000 lux / 250 h</span>) and record the percentage of area.</li>
-          <li>Change the orientation &mdash; but <b>not</b> with Project north, which the annual run
-            never sees. Instead set the 4&nbsp;m <i>South window</i>'s <b>Wall</b> to <b>East</b>,
-            and the 2&nbsp;m <i>East window</i>'s to <b>South</b>. Re-run: the mean falls to about
-            <b>523&nbsp;h</b> and ASE to about <b>56%</b>, from about <b>704&nbsp;h</b> and
-            <b>67.7%</b>. Same glass, same room.</li>
-          <li>Undo that. Add a horizontal overhang of depth 0.8 to the 2&nbsp;m east window: ASE
-            about <b>66.7%</b>, barely a point. Remove it and add vertical fins instead
+          <li>Set <b>Project north</b> to <b>&minus;90&deg;</b>, turning the 4&nbsp;m window to face
+            true east. The angle runs clockwise, so <b>+90&deg;</b> would face it west instead.
+            Re-run: about <b>613&nbsp;h</b> and <b>64.1%</b>, from <b>704&nbsp;h</b> and
+            <b>67.7%</b> facing south. Try +90&deg; (west, 620&nbsp;h, 63.0%) and 180&deg; (north,
+            574&nbsp;h, 58.9%) too &mdash; same glass, same room, four ways round.</li>
+          <li>Return project north to 0&deg;. Add a horizontal overhang of depth 0.8 to the
+            2&nbsp;m east window: ASE about <b>66.7%</b>, barely a point. Remove it and add vertical fins instead
             (<span class="dl-mono">depth 0.4 &middot; count 4 &middot; side both</span>): about
             <b>65.1%</b>, a point and a half further, from less projected area.</li>
           <li>Turn on <b>Solar rays</b> and scrub the time slider through a summer morning to see
-            why. This is the one place Project north does work, so rotate the model here to look at
-            the geometry &mdash; just do not read an annual number off it.</li>
+            why: the rays arrive nearly along the glass, under the overhang and across the
+            fins.</li>
         </ol>
         <p class="dl-principle"><b>Principle.</b> Solar altitude, not orientation alone, decides
           which device works. South sun at midday is high, so a shallow horizontal projection cuts

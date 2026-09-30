@@ -3,7 +3,7 @@
 <title>Daylight Lab</title>
 <meta name="description" content="Interactive daylighting analysis for architecture students — illuminance, daylight factor and useful daylight illuminance on a workplane grid, with a 3D sun path, shadows and solar ray access.">
 <meta name="author" content="Karam Al-Obaidi">
-<meta name="build" content="2026-09-15 · c5709a">
+<meta name="build" content="2026-09-30 · f0aeee">
 <!--
   Daylight Lab — a browser-based daylight simulation tool
   Copyright © Karam Al-Obaidi
@@ -2239,6 +2239,10 @@ DaylightCore.prototype.annualStep = function (st, nDays) {
     var md = fromDoy(st.day + 1);
     for (var h = st.hStart; h < st.hEnd; h++) {
       var sun = sunPosition(site, site.year || 2001, md.month, md.day, h + 0.5);
+      // sunPosition() returns a direction built at project north 0, because it
+      // has no access to the model. The live view re-rotates it; the year has
+      // to do the same or every annual metric ignores project north.
+      if (site.northAngle) sun.dir = sunVector(sun.altitude, sun.azimuth, site.northAngle);
       st.hours++;
       if (!sun.up) {
         for (var q0 = 0; q0 < n; q0++) udi[q0 * 5] += 1;
@@ -4757,6 +4761,10 @@ DaylightCore.prototype.annualStep = function (st, nDays) {
     var md = fromDoy(st.day + 1);
     for (var h = st.hStart; h < st.hEnd; h++) {
       var sun = sunPosition(site, site.year || 2001, md.month, md.day, h + 0.5);
+      // sunPosition() returns a direction built at project north 0, because it
+      // has no access to the model. The live view re-rotates it; the year has
+      // to do the same or every annual metric ignores project north.
+      if (site.northAngle) sun.dir = sunVector(sun.altitude, sun.azimuth, site.northAngle);
       st.hours++;
       if (!sun.up) {
         for (var q0 = 0; q0 < n; q0++) udi[q0 * 5] += 1;
@@ -9163,6 +9171,11 @@ App.onSiteChanged = function () {
   if (this.climate && this.climate.synthetic) this.useSyntheticClimate(true);
   this.updateSunObject();
   this.applySun();
+  // Latitude, longitude, time zone, project north and the city list all land
+  // here, and every one of them moves the sun. That invalidates the slice as
+  // well as the year; marking only 'annual' left the displayed illuminance
+  // showing the previous location until the user pressed Calculate.
+  this.markDirty('sky');
   this.markDirty('annual');
   UI.sync();
 };
@@ -9198,6 +9211,9 @@ App.loadEpwFile = function (file) {
       self.applySun();
       self.toast('Loaded ' + c.name + ' — location applied.', 'ok');
       self.setStatus('EPW loaded', 'ok');
+      // The file moves the site and switches the sky to Perez, so the
+      // instantaneous slice is stale too — not just the year.
+      self.markDirty('sky');
       self.markDirty('annual');
       UI.sync();
     } catch (e) {
@@ -9488,7 +9504,10 @@ App.computeAnnual = function () {
     // UDI binning, DA, ASE and sun hours are the shared code path
     df: m.analysis.engine === 'splitflux' ? this.result.df : null,
     climate: this.climate,
-    site: { lat: m.site.lat, lon: m.site.lon, tz: m.site.tz, year: 2001 },
+    // northAngle rides along with the site: the worker builds its own sun
+    // directions, and sunPosition() cannot see the model to rotate them.
+    site: { lat: m.site.lat, lon: m.site.lon, tz: m.site.tz, year: 2001,
+            northAngle: m.room.northAngle || 0 },
     udi: m.analysis.udi, targetLux: m.analysis.targetLux,
     occStart: m.analysis.occStart, occEnd: m.analysis.occEnd,
     aseLux: m.analysis.aseLux, groundRefl: m.room.refl.ground,

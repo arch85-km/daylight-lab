@@ -390,12 +390,13 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         tool's validation suite checks it against published values for four cities and finds
         agreement to <b>0.1°</b>.</p>
       <p>Project north rotates the model relative to true north; the sun vector is rotated into
-        model space rather than the geometry being rotated. <b>It reaches the live view only.</b>
-        The sun-path dome, the shadows, the solar rays and the single-moment illuminance all
-        follow it, but the annual run is handed the site and the climate without it, so
-        <b>Daylight Autonomy, sDA, ASE, UDI and Direct sun hours are all computed as though project
-        north were 0°</b>. To study orientation against any of those, move the openings to the wall
-        you mean rather than rotating the model.</p>
+        model space rather than the geometry being rotated. It reaches everything the sun touches —
+        the sun-path dome, the shadows, the solar rays, the single-moment illuminance, and the
+        annual run behind Daylight Autonomy, sDA, ASE, UDI and Direct sun hours. Mind the sign:
+        the angle is measured <em>clockwise</em>, so <code>+90°</code> turns a south-facing wall to
+        face true <em>west</em> and <code>−90°</code> turns it to face true east. The north arrow on
+        the exported sheet is the check — it points at true north, so rotate until it agrees with
+        your site plan.</p>
 
       <h3>Direct and diffuse — both, but from different machinery</h3>
       <p>Diffuse sky and ground come from the daylight-coefficient matrix. The direct beam is a
@@ -731,19 +732,20 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
             <code>1000 lux</code> / <code>250 h</code>) and record the ASE percentage of area from
             the compliance summary. You should get about <b>704 h</b> mean and <b>67.7%</b>
             ASE.</li>
-          <li>Now change the orientation — but <b>not</b> with Project north, which the annual run
-            never sees (section 05). Instead open the 4 m <i>South window</i> and set its
-            <code>Wall</code> to <code>East</code>, and set the 2 m <i>East window</i> to
-            <code>South</code>. Re-run: the mean falls to about <b>523 h</b> and ASE to about
-            <b>56%</b>. The same glass, the same room, a quarter of the direct sun gone.</li>
-          <li>Undo that, so the 2 m window is back on the east wall. Add a horizontal overhang of
-            <code>depth 0.8</code> to it and re-read ASE: about <b>66.7%</b>, barely a point.</li>
+          <li>Set <b>Project north</b> to <code>−90°</code> — the same room, turned so the 4 m
+            window faces true east. Mind the sign: the angle runs clockwise, so
+            <code>+90°</code> would face it west instead. Re-run: the mean falls to about
+            <b>613 h</b> and ASE to about <b>64.1%</b>, and the maximum drops from 1,969 h to
+            1,515 h. Try <code>+90°</code> (west, 620 h and 63.0%) and <code>180°</code> (north,
+            574 h and 58.9%) as well — the same glass in the same room, four ways round.</li>
+          <li>Return project north to <code>0°</code>. Add a horizontal overhang of
+            <code>depth 0.8</code> to the <em>east</em> window and re-read ASE: about
+            <b>66.7%</b>, barely a point off the 67.7% you started from.</li>
           <li>Remove it and add vertical fins instead: <code>depth 0.4</code>, <code>count 4</code>,
             <code>side both</code>. ASE falls to about <b>65.1%</b> — a point and a half further,
             from a device with less projected area than the overhang.</li>
           <li>Turn on <b>Solar rays</b> and scrub the time slider through a summer morning to see
-            why. This is the one step where Project north <em>does</em> work, so you may rotate the
-            model here to look at the geometry — just do not read an annual number off it.</li>
+            why: the rays arrive nearly along the glass, under the overhang and across the fins.</li>
         </ol>
         <p class="dl-principle"><b>Principle.</b> Solar altitude, not orientation alone, decides
           which device works. South sun at midday is high, so a shallow horizontal projection cuts
@@ -754,7 +756,9 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
           also feeding ASE, and it narrows further as the window grows — on a 4 m east window the
           ordering reverses and the overhang wins again, because 0.8 m across 4 m of glass is more
           shading area than four 0.4 m fins. Quote the device's projected area alongside its
-          orientation, or the comparison is not a comparison.</p>
+          orientation, or the comparison is not a comparison. Step 3 is the wider lesson, and the
+          cheapest experiment in the tool: one control, four readings, and a spread of nine
+          percentage points in ASE from nothing but which way the building faces.</p>
       </div>
 
       <p class="dl-note">A caution for all three: quote differences, not absolute values.

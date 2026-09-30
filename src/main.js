@@ -164,6 +164,11 @@ App.onSiteChanged = function () {
   if (this.climate && this.climate.synthetic) this.useSyntheticClimate(true);
   this.updateSunObject();
   this.applySun();
+  // Latitude, longitude, time zone, project north and the city list all land
+  // here, and every one of them moves the sun. That invalidates the slice as
+  // well as the year; marking only 'annual' left the displayed illuminance
+  // showing the previous location until the user pressed Calculate.
+  this.markDirty('sky');
   this.markDirty('annual');
   UI.sync();
 };
@@ -199,6 +204,9 @@ App.loadEpwFile = function (file) {
       self.applySun();
       self.toast('Loaded ' + c.name + ' — location applied.', 'ok');
       self.setStatus('EPW loaded', 'ok');
+      // The file moves the site and switches the sky to Perez, so the
+      // instantaneous slice is stale too — not just the year.
+      self.markDirty('sky');
       self.markDirty('annual');
       UI.sync();
     } catch (e) {
@@ -489,7 +497,10 @@ App.computeAnnual = function () {
     // UDI binning, DA, ASE and sun hours are the shared code path
     df: m.analysis.engine === 'splitflux' ? this.result.df : null,
     climate: this.climate,
-    site: { lat: m.site.lat, lon: m.site.lon, tz: m.site.tz, year: 2001 },
+    // northAngle rides along with the site: the worker builds its own sun
+    // directions, and sunPosition() cannot see the model to rotate them.
+    site: { lat: m.site.lat, lon: m.site.lon, tz: m.site.tz, year: 2001,
+            northAngle: m.room.northAngle || 0 },
     udi: m.analysis.udi, targetLux: m.analysis.targetLux,
     occStart: m.analysis.occStart, occEnd: m.analysis.occEnd,
     aseLux: m.analysis.aseLux, groundRefl: m.room.refl.ground,
