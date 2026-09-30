@@ -1,6 +1,6 @@
 {
   "name": "daylight-lab",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Daylight Lab - browser-based daylight simulation tool for architecture students. Builds a single self-contained HTML file.",
   "author": "Karam Al-Obaidi",

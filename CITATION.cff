@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If this tool informs a paper, a thesis, a lecture or a studio brief, please cite it as software."
 type: software
 title: "Daylight Lab: A browser-based daylight simulation tool"
-version: 1.0.0
-date-released: 2026-09-16
+version: 1.0.1
+date-released: 2026-09-30
 doi: 10.5281/zenodo.22796355
 identifiers:
   - type: doi
@@ -11,7 +11,7 @@ identifiers:
     description: "Concept DOI — always resolves to the latest version"
   - type: doi
     value: 10.5281/zenodo.22796356
-    description: "Version DOI — this release, 1.0.0"
+    description: "Version DOI — the previous release, 1.0.0"
 abstract: >-
   A daylighting analysis tool for architecture students that runs entirely in
   the browser, shipped as a single self-contained HTML file. A parametric room
