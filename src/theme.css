@@ -307,6 +307,8 @@ input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius
 /* slider + numeric readout */
 .slider { display: grid; grid-template-columns: 1fr 54px; gap: 8px; align-items: center; }
 .slider output { font-family: var(--font-num); font-size: 11px; color: var(--ink-2); text-align: right; }
+.slider input.rangenum { width: 100%; min-width: 0; padding: 3px 4px; font-family: var(--font-num);
+  font-size: 11px; text-align: right; }
 
 /* aperture list */
 .ap-list { display: flex; flex-direction: column; gap: 5px; }

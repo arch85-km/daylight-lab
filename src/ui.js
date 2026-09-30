@@ -45,10 +45,32 @@ function ctlRange(get, set, o) {
   o = o || {};
   var wrap = el('div', { class: 'slider ctl' });
   var i = el('input', { type: 'range', min: o.min, max: o.max, step: o.step == null ? 1 : o.step });
-  var out = el('output');
-  var show = function (v) { out.textContent = (o.fmt ? o.fmt(v) : fmtN(v, o)) + (o.unit || ''); };
+  // `editable` puts a number box in the readout slot. A slider alone cannot be
+  // landed on an exact value when its range is wide — project north spans 360°
+  // in a couple of hundred pixels — and for some values the exact one is the
+  // whole point.
+  var num = o.editable
+    ? el('input', { type: 'number', class: 'rangenum',
+        min: o.min, max: o.max, step: o.step == null ? 1 : o.step })
+    : null;
+  var out = num || el('output');
+  var show = function (v) {
+    if (num) { if (document.activeElement !== num) num.value = fmtN(v, o); }
+    else out.textContent = (o.fmt ? o.fmt(v) : fmtN(v, o)) + (o.unit || '');
+  };
   i.addEventListener('input', function () { var v = +i.value; show(v); set(v, true); });
   i.addEventListener('change', function () { set(+i.value, false); });
+  if (num) {
+    var commit = function (live) {
+      var v = parseFloat(num.value);
+      if (!isFinite(v)) { num.value = fmtN(get(), o); return; }
+      if (o.min != null) v = Math.max(o.min, v);
+      if (o.max != null) v = Math.min(o.max, v);
+      i.value = v; set(v, !!live);
+    };
+    num.addEventListener('input', function () { commit(true); });
+    num.addEventListener('change', function () { commit(false); num.value = fmtN(get(), o); });
+  }
   reg(function () { var v = get(); i.value = v; show(v); });
   wrap.appendChild(i); wrap.appendChild(out);
   return wrap;
@@ -210,10 +232,10 @@ function panelLocation() {
         { min: -12, max: 14, step: 0.5, decimals: 1 }))
     ]));
 
-    b.appendChild(row('Project north', ctlRange(
+    b.appendChild(row('Project north °', ctlRange(
       function () { return App.model.room.northAngle; },
       function (v) { App.model.room.northAngle = v; App.onSiteChanged(); },
-      { min: -180, max: 180, step: 1, unit: '°', decimals: 0 })));
+      { min: -180, max: 180, step: 1, unit: '°', decimals: 0, editable: true })));
 
     b.appendChild(row('Ground reflectance', ctlRange(
       function () { return App.model.room.refl.ground; },
