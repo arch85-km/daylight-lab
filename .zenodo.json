@@ -1,7 +1,7 @@
 {
   "upload_type": "software",
   "title": "Daylight Lab: A browser-based daylight simulation tool",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "language": "eng",
   "license": "MIT",
   "creators": [

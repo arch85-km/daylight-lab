@@ -1124,6 +1124,34 @@ const help = await page.evaluate(() => {
 ok('the help panel states the licence and credits three.js',
   /CC BY 4\.0/.test(help) && /three\.js/.test(help) && /MIT/.test(help));
 
+/* release metadata — the files that name the version, and the one that Zenodo
+   reads. .zenodo.json takes precedence over CITATION.cff and over the release
+   tag when Zenodo archives a GitHub release, so a stale version there is
+   published under the wrong label with a correct new DOI, which is worse than
+   an obvious failure. Nothing in the build touches these, so assert them. */
+console.log('\n-- release metadata --');
+{
+  const read = (p) => readFileSync(join(root, p), 'utf8');
+  const pkgV = JSON.parse(read('package.json')).version;
+  const zenV = JSON.parse(read('.zenodo.json')).version;
+  const cffText = read('CITATION.cff');
+  const cffV = (cffText.match(/^version:\s*"?([^"\s]+)"?/m) || [])[1];
+  ok('package.json, .zenodo.json and CITATION.cff agree on the version',
+    pkgV === zenV && pkgV === cffV,
+    `package.json ${pkgV} · .zenodo.json ${zenV} · CITATION.cff ${cffV}`);
+
+  for (const doc of ['docs/method-notes.html', 'docs/method-notes-summary.html']) {
+    const html = read(doc);
+    const byline = (html.match(/Version<\/b>\s*([0-9.]+)/) || [])[1];
+    ok(`${doc} byline names the current version`, byline === pkgV,
+      `byline ${byline}, package.json ${pkgV}`);
+    ok(`${doc} cites a version DOI, not the concept DOI`,
+      /doi\s*=\s*\{10\.5281\/zenodo\.\d+\}/.test(html)
+      && !/doi\s*=\s*\{10\.5281\/zenodo\.22796355\}/.test(html),
+      'the BibTeX doi field should name this release, not the concept record');
+  }
+}
+
 /* console */
 console.log('\n-- console --');
 const real = consoleErrors.filter((e) => !/favicon|Download is not allowed|net::ERR_/i.test(e));
