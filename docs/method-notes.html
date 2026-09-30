@@ -390,7 +390,12 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
         tool's validation suite checks it against published values for four cities and finds
         agreement to <b>0.1°</b>.</p>
       <p>Project north rotates the model relative to true north; the sun vector is rotated into
-        model space rather than the geometry being rotated.</p>
+        model space rather than the geometry being rotated. <b>It reaches the live view only.</b>
+        The sun-path dome, the shadows, the solar rays and the single-moment illuminance all
+        follow it, but the annual run is handed the site and the climate without it, so
+        <b>Daylight Autonomy, sDA, ASE, UDI and Direct sun hours are all computed as though project
+        north were 0°</b>. To study orientation against any of those, move the openings to the wall
+        you mean rather than rotating the model.</p>
 
       <h3>Direct and diffuse — both, but from different machinery</h3>
       <p>Diffuse sky and ground come from the daylight-coefficient matrix. The direct beam is a
@@ -646,11 +651,11 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
           <tr><td>Bilateral</td><td class="dl-n">5.25%</td><td class="dl-n">5.55%</td><td class="dl-d">+6%</td></tr>
           <tr><td>Deep plan, 12 m</td><td class="dl-n">3.34%</td><td class="dl-n">3.57%</td><td class="dl-d">+7%</td></tr>
           <tr><td>0.6 m overhang</td><td class="dl-n">2.51%</td><td class="dl-n">2.52%</td><td class="dl-d">+0%</td></tr>
-          <tr><td>Louvre bank, 5 blades</td><td class="dl-n">0.88%</td><td class="dl-n">0.98%</td><td class="dl-d">+12%</td></tr>
+          <tr><td>Louvre bank, 5 blades</td><td class="dl-n">0.87%</td><td class="dl-n">0.98%</td><td class="dl-d">+13%</td></tr>
           <tr><td>Skylights only</td><td class="dl-n">7.87%</td><td class="dl-n">7.33%</td><td class="dl-d">−7%</td></tr>
           <tr><td>Thick wall, 0.9 m</td><td class="dl-n">1.81%</td><td class="dl-n">3.77%</td><td class="dl-d">+108%</td></tr>
         </tbody>
-        <caption>Split-flux still sits a few per cent high on side-lit cases and low on skylights, so that offset is the baseline, not zero. It used to be larger: two defects that had been partly cancelling — an internally reflected component about 10% low, and a different overcast sky from the raytracer's — were corrected together, taking the overhang case from +3% to 0% and the louvre bank from +18% to +12%. The thick-wall row is the honest one: split-flux never sees the reveal, so a deep reveal moves one engine and not the other.</caption>
+        <caption>Split-flux still sits a few per cent high on side-lit cases and low on skylights, so that offset is the baseline, not zero. It used to be larger: two defects that had been partly cancelling — an internally reflected component about 10% low, and a different overcast sky from the raytracer's — were corrected together, taking the overhang case from +3% to 0% and the louvre bank from +19% to +13%. The thick-wall row is the honest one: split-flux never sees the reveal, so a deep reveal moves one engine and not the other.</caption>
       </table></div>
       <p>Use the raytracer for anything with fine shading structure or a deep reveal. Use split-flux
         when you want a number a student can check by hand.</p>
@@ -673,13 +678,21 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
           <li>Delete or disable every opening except one south window. Set it to <code>w 5.0</code>, <code>h 1.5</code>, <code>sill 0.9</code> — a head height of 2.4 m.</li>
           <li>Sky <code>CIE Overcast</code>, metric <code>DF</code>. Note the distance from the window at which DF falls below 2%, and record the mean and the min:mean uniformity.</li>
           <li>Now change <b>only the sill</b>, to <code>1.9 m</code>. Height stays 1.5 m, width stays 5.0 m — <em>the glazed area is identical</em> — but the head is now 3.4 m.</li>
-          <li>Re-read the 2% depth, the mean and the uniformity.</li>
+          <li>Re-read the 2% depth, the mean and the uniformity. Measured on this room, the 2%
+            contour moves from <b>2.93 m</b> to <b>3.99 m</b> — a metre deeper for the same
+            glass — the mean DF <em>falls</em> from 2.41% to 2.14%, and the min:mean uniformity
+            <em>rises</em> from 0.04 to 0.06.</li>
         </ol>
         <p class="dl-principle"><b>Principle.</b> Daylight penetration depth scales with the height
           of the window <em>head</em> above the workplane, not with glazed area. Because you changed
           nothing but the sill, any difference is attributable to head height alone. This is the
           geometric basis of the rule of thumb that useful daylight reaches roughly 1.5–2× the head
-          height into a side-lit room.</p>
+          height into a side-lit room — and note that the rule is measured above the
+          <em>workplane</em>, not above the floor: the two heads here sit 1.65 m and 2.65 m above
+          it, and 2.93 and 3.99 m of penetration are 1.8× and 1.5× those. The mean going down while
+          the depth goes up is the second lesson. Raising the head moves glass away from the
+          workplane, so the bright zone near the window dims even as the dim zone at the back
+          brightens; a single mean cannot see that, and the uniformity can.</p>
       </div>
 
       <div class="dl-ex">
@@ -697,27 +710,51 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
           light”, so it falls whenever you shade. UDI has an upper bound, so shading can move hours
           out of the over-lit bin and <em>into</em> the useful one. The two metrics can move in
           opposite directions for the same design change, and knowing which question you are asking
-          decides which one to quote. Step 6 adds a second lesson: on a simple overhang the two
-          engines sit about 3% apart, but on a five-blade louvre bank the audit measures 18% — the
-          split-flux method degrades as shading structure gets finer.</p>
+          decides which one to quote. Measured on this model the overhang takes the mean DF from
+          <b>9.35% to 8.44%</b> and the area above 2% from 95.8% to 94.8% — both worse — while the
+          over-lit share falls from <b>27.9% to 24.2%</b> and the useful share rises from
+          <b>59.5% to 63.0%</b>. Step 6 adds a second lesson. The audit's own cases put split-flux
+          level with the raytracer on a bare room with a 0.6 m overhang and <b>13%</b> high on a
+          five-blade louvre bank: the method degrades as shading structure gets finer. The studio
+          classroom is not either of those — with six openings including a skylight it sits about
+          <b>10%</b> apart — so read the gap as a property of the model in front of you, not a
+          constant.</p>
       </div>
 
       <div class="dl-ex">
         <span class="dl-ex-n">Exercise 03</span>
         <h3>Why an overhang works on the south façade and a fin is needed on the east</h3>
         <ol class="dl-steps">
-          <li>Default studio classroom, London. Metric <code>Direct sun hours</code>. Wait for the annual run.</li>
-          <li>Record the mean and maximum sun hours, then switch to <code>ASE</code> (thresholds <code>1000 lux</code> / <code>250 h</code>) and record the ASE percentage of area from the compliance summary.</li>
-          <li>Set <b>Project north</b> to <code>90°</code> — the same room, rotated so the large opening faces east. Re-run and record both figures again.</li>
-          <li>Return project north to <code>0°</code>. Add a horizontal overhang of <code>depth 0.8</code> to the <em>east</em> window and note how little ASE changes.</li>
-          <li>Remove it and add vertical fins instead: <code>depth 0.4</code>, <code>count 4</code>, <code>side both</code>. Re-read ASE.</li>
-          <li>Turn on <b>Solar rays</b> and scrub the time slider through a summer morning to see why.</li>
+          <li>Default studio classroom, London. Metric <code>Direct sun hours</code>. Wait for the
+            annual run, which uses the built-in synthetic climate unless you import an EPW.</li>
+          <li>Record the mean and maximum sun hours, then switch to <code>ASE</code> (thresholds
+            <code>1000 lux</code> / <code>250 h</code>) and record the ASE percentage of area from
+            the compliance summary. You should get about <b>704 h</b> mean and <b>67.7%</b>
+            ASE.</li>
+          <li>Now change the orientation — but <b>not</b> with Project north, which the annual run
+            never sees (section 05). Instead open the 4 m <i>South window</i> and set its
+            <code>Wall</code> to <code>East</code>, and set the 2 m <i>East window</i> to
+            <code>South</code>. Re-run: the mean falls to about <b>523 h</b> and ASE to about
+            <b>56%</b>. The same glass, the same room, a quarter of the direct sun gone.</li>
+          <li>Undo that, so the 2 m window is back on the east wall. Add a horizontal overhang of
+            <code>depth 0.8</code> to it and re-read ASE: about <b>66.7%</b>, barely a point.</li>
+          <li>Remove it and add vertical fins instead: <code>depth 0.4</code>, <code>count 4</code>,
+            <code>side both</code>. ASE falls to about <b>65.1%</b> — a point and a half further,
+            from a device with less projected area than the overhang.</li>
+          <li>Turn on <b>Solar rays</b> and scrub the time slider through a summer morning to see
+            why. This is the one step where Project north <em>does</em> work, so you may rotate the
+            model here to look at the geometry — just do not read an annual number off it.</li>
         </ol>
         <p class="dl-principle"><b>Principle.</b> Solar altitude, not orientation alone, decides
           which device works. South sun at midday is high, so a shallow horizontal projection cuts
           it. East and west sun arrives low and nearly normal to the glass, where a horizontal
           overhang of any reasonable depth barely intersects it and only vertical elements help. The
-          ray view in step 6 makes the geometry visible rather than asserted.</p>
+          ray view in step 6 makes the geometry visible rather than asserted. One caution the
+          numbers above carry: the margin is small because five other openings and a skylight are
+          also feeding ASE, and it narrows further as the window grows — on a 4 m east window the
+          ordering reverses and the overhang wins again, because 0.8 m across 4 m of glass is more
+          shading area than four 0.4 m fins. Quote the device's projected area alongside its
+          orientation, or the comparison is not a comparison.</p>
       </div>
 
       <p class="dl-note">A caution for all three: quote differences, not absolute values.
