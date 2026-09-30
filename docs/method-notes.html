@@ -734,10 +734,12 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
             ASE.</li>
           <li>Set <b>Project north</b> to <code>−90°</code> — the same room, turned so the 4 m
             window faces true east. Mind the sign: the angle runs clockwise, so
-            <code>+90°</code> would face it west instead. Re-run: the mean falls to about
-            <b>613 h</b> and ASE to about <b>64.1%</b>, and the maximum drops from 1,969 h to
-            1,515 h. Try <code>+90°</code> (west, 620 h and 63.0%) and <code>180°</code> (north,
-            574 h and 58.9%) as well — the same glass in the same room, four ways round.</li>
+            <code>+90°</code> would face it west instead. The control is a slider with no number
+            box, and 360° in a few hundred pixels is hard to land on, so click it and use the
+            arrow keys, which step exactly 1°. Re-run, then try <code>+90°</code> (west) and
+            <code>180°</code> (north). You should get roughly <b>68%</b> ASE facing south,
+            <b>64%</b> east, <b>63%</b> west and <b>59%</b> north — the same glass in the same
+            room, four ways round.</li>
           <li>Return project north to <code>0°</code>. Add a horizontal overhang of
             <code>depth 0.8</code> to the <em>east</em> window and re-read ASE: about
             <b>66.7%</b>, barely a point off the 67.7% you started from.</li>
@@ -758,7 +760,13 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
           shading area than four 0.4 m fins. Quote the device's projected area alongside its
           orientation, or the comparison is not a comparison. Step 3 is the wider lesson, and the
           cheapest experiment in the tool: one control, four readings, and a spread of nine
-          percentage points in ASE from nothing but which way the building faces.</p>
+          percentage points in ASE from nothing but which way the building faces. Read those four
+          figures as approximate. ASE is a <em>count</em> of grid points over a threshold, not an
+          average, so on this 192-point grid it can only move in steps of 1/192 = 0.52%, and a
+          degree or two of rotation can flip several points across the 250-hour line at once — a
+          measured sweep either side of 90° swings by up to three percentage points while the mean
+          sun-hours figure barely moves. The mean is the stable number; the percentage is the
+          headline. Quote the rotation you actually set, and do not chase a decimal.</p>
       </div>
 
       <p class="dl-note">A caution for all three: quote differences, not absolute values.
