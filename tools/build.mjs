@@ -147,9 +147,25 @@ const notice = `<!--\n${noticeBody}\n-->`;
 const buildHash = createHash('sha256').update(app).update(worker).update(style).digest('hex').slice(0, 6);
 const buildStamp = `${new Date().toISOString().slice(0, 10)} \u00b7 ${buildHash}`;
 
+/*
+ * The release, as distinct from the build. CITATION.cff is the one place the
+ * version and date are declared, so they are read from it rather than typed
+ * again here - a second copy is a second thing to forget. The build stamp above
+ * still identifies the file; this identifies the release it belongs to.
+ */
+const cff = read('CITATION.cff');
+const relVersion = (cff.match(/^version:\s*"?([^"\s]+)"?/m) || [])[1] || '';
+const relDate = (cff.match(/^date-released:\s*"?([^"\s]+)"?/m) || [])[1] || '';
+if (!relVersion || !relDate) throw new Error('CITATION.cff: version or date-released not found');
+const MONTHS = ['January','February','March','April','May','June','July',
+                'August','September','October','November','December'];
+const rp = relDate.split('-');
+const releaseStamp = `${relVersion} \u00b7 ${parseInt(rp[2], 10)} ${MONTHS[parseInt(rp[1], 10) - 1]} ${rp[0]}`;
+
 const out = read('src/index.html')
   .replace('__NOTICE__', () => notice)
   .replace(/__BUILD__/g, () => buildStamp)
+  .replace(/__RELEASE__/g, () => releaseStamp)
   .replace('__STYLE__', () => style)
   .replace('__THREE__', () => guard(three))
   .replace('__WORKER__', () => guard(worker))
@@ -165,3 +181,4 @@ console.log('  worker    ' + kb(worker.length));
 console.log('  css       ' + kb(style.length));
 console.log('  total     ' + kb(statSync(join(root, 'daylight-lab.html')).size));
 console.log('  build     ' + buildStamp);
+console.log('  release   ' + releaseStamp);

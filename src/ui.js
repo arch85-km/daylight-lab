@@ -1318,10 +1318,14 @@ var INFO = {
       '<p>Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r160 (MIT), inlined into ' +
       'this file along with its licence. Legend colour maps: viridis, inferno and cividis (CC0), turbo (Google, ' +
       'Apache-2.0). The full notice is at the top of the file itself — view source to read it.</p>' +
+      '<h3>This release</h3>' +
+      '<p><b>{RELEASE}</b> — the released version this file belongs to, and the date of that ' +
+      'release. This is what to put in a citation.</p>' +
       '<h3>This build</h3>' +
-      '<p><b>{BUILD}</b> — the date this file was built and a hash of the sources it was built ' +
-      'from. Quote it alongside any figure you publish: the engines have changed before, and two ' +
-      'runs of the same model on different builds can differ.</p>'
+      '<p><b>{BUILD}</b> — the date this particular file was built and a hash of the sources it ' +
+      'was built from. Two builds can share a release: the hash tells them apart. Quote it ' +
+      'alongside any figure you publish, because the engines have changed before, and two runs of ' +
+      'the same model on different builds can differ.</p>'
   }
 };
 
@@ -1329,6 +1333,16 @@ var INFO = {
  * Build date and source hash, written into the head by tools/build.mjs. One
  * substitution point, read rather than duplicated, so nothing can drift.
  */
+/**
+ * The release this file belongs to, written into the head by tools/build.mjs
+ * from CITATION.cff. Read rather than duplicated, exactly as the build stamp is.
+ */
+function releaseStamp() {
+  var m = document.querySelector('meta[name="release"]');
+  var v = m ? (m.getAttribute('content') || '').trim() : '';
+  return /^\d+\.\d+\.\d+/.test(v) ? v : 'unknown';
+}
+
 function buildStamp() {
   var m = document.querySelector('meta[name="build"]');
   var v = m ? (m.getAttribute('content') || '').trim() : '';
@@ -1337,7 +1351,7 @@ function buildStamp() {
 
 function openModal(title, html) {
   $('#modal-title').textContent = title;
-  $('#modal-body').innerHTML = html.replace('{BUILD}', buildStamp());
+  $('#modal-body').innerHTML = html.replace('{BUILD}', buildStamp()).replace('{RELEASE}', releaseStamp());
   $('#modal-bg').classList.add('on');
 }
 function closeModal() { $('#modal-bg').classList.remove('on'); }
