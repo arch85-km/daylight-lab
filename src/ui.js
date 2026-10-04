@@ -1315,6 +1315,9 @@ var INFO = {
       '<p>© Karam Al-Obaidi. The app is licensed <b>MIT</b> and the documentation <b>CC BY 4.0</b> — use it, adapt it, ' +
       'build on it, for any purpose including commercially. Credit is the only condition. ' +
       '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">creativecommons.org/licenses/by/4.0</a></p>' +
+      '<p>The <b>cube device</b> is the author\u2019s own mark and is not covered by either licence; ' +
+      'all rights in it are reserved. Keep it on a copy you redistribute, but do not adopt it as ' +
+      'your own badge.</p>' +
       '<p>Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r160 (MIT), inlined into ' +
       'this file along with its licence. Legend colour maps: viridis, inferno and cividis (CC0), turbo (Google, ' +
       'Apache-2.0). The full notice is at the top of the file itself — view source to read it.</p>' +
