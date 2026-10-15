@@ -271,12 +271,12 @@ courtesy on top of it.
 **APA 7**
 
 > Al-Obaidi, K. M. (2026). *Daylight Lab: A browser-based daylight simulation tool*
-> (Version 1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.22796356
+> (Version 1.0.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23069949
 
 **Harvard**
 
 > Al-Obaidi, K.M. (2026) *Daylight Lab: A browser-based daylight simulation tool*
-> (Version 1.0.0). Zenodo. Available at: https://doi.org/10.5281/zenodo.22796356
+> (Version 1.0.1). Zenodo. Available at: https://doi.org/10.5281/zenodo.23069949
 
 **BibTeX**
 
@@ -285,17 +285,19 @@ courtesy on top of it.
   author    = {Al-Obaidi, Karam M.},
   title     = {Daylight Lab: A browser-based daylight simulation tool},
   year      = {2026},
-  version   = {1.0.0},
+  version   = {1.0.1},
   publisher = {Zenodo},
-  doi       = {10.5281/zenodo.22796356},
+  doi       = {10.5281/zenodo.23069949},
   url       = {https://karam.me.uk/applications/daylight-lab/},
   note      = {Code MIT licensed; accompanying material CC BY 4.0}
 }
 ```
 
-That DOI names this release. To cite the software in general rather than version
-1.0.0, use the concept DOI [10.5281/zenodo.22796355](https://doi.org/10.5281/zenodo.22796355),
-which always resolves to the newest version.
+That DOI names this release, 1.0.1. A figure produced on 1.0.0 should cite that
+build instead: [10.5281/zenodo.22796356](https://doi.org/10.5281/zenodo.22796356).
+To cite the software in general rather than one version, use the concept DOI
+[10.5281/zenodo.22796355](https://doi.org/10.5281/zenodo.22796355), which always
+resolves to the newest version.
 
 Anyone reporting results from the tool should also state the **engine**
 (raytraced or split-flux), the **quality tier**, the **sky model** and the

@@ -11,10 +11,10 @@ identifiers:
     description: "Concept DOI — always resolves to the latest version"
   - type: doi
     value: 10.5281/zenodo.23069949
-    description: "Version DOI — this release, 1.0.1"
+    description: "Version DOI — 1.0.1; cite this when quoting a figure"
   - type: doi
     value: 10.5281/zenodo.22796356
-    description: "Version DOI — the previous release, 1.0.0"
+    description: "Version DOI — 1.0.0"
 abstract: >-
   A daylighting analysis tool for architecture students that runs entirely in
   the browser, shipped as a single self-contained HTML file. A parametric room
