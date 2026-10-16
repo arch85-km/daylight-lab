@@ -275,7 +275,6 @@
 /* long addresses in the references break rather than push the page sideways on a phone */
 .dl-doc a{overflow-wrap:anywhere;}
 /* a column of figures has its heading over the figures, not at the far edge */
-.dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(1), tbody td.dl-d:nth-child(1)) thead th:nth-child(1),
 .dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(2), tbody td.dl-d:nth-child(2)) thead th:nth-child(2),
 .dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(3), tbody td.dl-d:nth-child(3)) thead th:nth-child(3),
 .dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(4), tbody td.dl-d:nth-child(4)) thead th:nth-child(4),
@@ -283,6 +282,11 @@
 .dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(6), tbody td.dl-d:nth-child(6)) thead th:nth-child(6),
 .dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(7), tbody td.dl-d:nth-child(7)) thead th:nth-child(7),
 .dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(8), tbody td.dl-d:nth-child(8)) thead th:nth-child(8){text-align:right;}
+/* the first column names the row, so it reads from the left like the text, even when it holds a number (unless its heading is marked as a figure) */
+.dl-doc .dl-tbl table:not(:has(thead th.dl-n:first-child)) tr > :first-child{text-align:left;}
+/* the site theme stripes table rows and tints them on hover; the notes keep one even tint */
+.dl-doc .dl-tbl th,.dl-doc .dl-tbl td{background-color:transparent;}
+/* formulas are <pre>, not <div>: the site's HTML minifier leaves <pre> alone but collapses the line breaks in a <div> */
 /* no side padding of its own: the Elementor section sets the margins, so the notes line up with the blocks above them on every screen */
 .dl-doc{padding-left:0;padding-right:0;}
 /* and no width cap of its own: on a wide screen a capped, centred block starts further in than the blocks above it */
@@ -359,20 +363,20 @@
       <p>The sum of a diffuse and a direct term. In the raytraced engine the diffuse term is a dot
         product between the point's daylight-coefficient row and the sky-patch luminance vector,
         with one extra column for the ground:</p>
-      <div class="dl-formula">E_diffuse(p) = Σᵢ DC[p][i] · Lᵢ  +  DC[p][ground] · L_ground     <em>lux</em></div>
+      <pre class="dl-formula">E_diffuse(p) = Σᵢ DC[p][i] · Lᵢ  +  DC[p][ground] · L_ground     <em>lux</em></pre>
       <p>The direct term samples the sun disc and multiplies by the product of glazing
         transmittances along the ray — four disc samples when the model is at rest, one while a
         slider is being dragged:</p>
-      <div class="dl-formula">E_direct(p) = E_normal · (1/K) Σₖ cos θₖ · τ_path(k)</div>
+      <pre class="dl-formula">E_direct(p) = E_normal · (1/K) Σₖ cos θₖ · τ_path(k)</pre>
 
       <h3>Daylight Factor</h3>
       <p>Computed as a ratio against the <em>diffuse horizontal</em> illuminance of the same CIE
         overcast sky. The direct beam is explicitly switched off for this pass, so DF never
         contains sunlight. The design sky illuminance cancels out of the ratio.</p>
-      <div class="dl-formula">DF(p) = 100 · E_overcast(p) / E_diffuse-horizontal</div>
+      <pre class="dl-formula">DF(p) = 100 · E_overcast(p) / E_diffuse-horizontal</pre>
       <p>Under the split-flux engine, DF is instead the classic BRE hand method — three components
         added, the first two varying point by point and the third a single room-wide number:</p>
-      <div class="dl-formula">DF = SC + ERC + IRC
+      <pre class="dl-formula">DF = SC + ERC + IRC
 &nbsp;
 <em>SC </em> numerical integration over each aperture, 8×8 samples
      (16×16 when any shading device is present), CIE overcast
@@ -391,7 +395,7 @@
      light reaching the ceiling and upper walls.
      C interpolated from the BRE table, nine published values
      [39, 35, 31, 25, 20, 14, 10, 7, 5] over 0°–80° in 10° steps,
-     which the tool pads to 90° with a further 5.</div>
+     which the tool pads to 90° with a further 5.</pre>
       <p class="dl-note"><b>The internally reflected component departs from the published method in
         two ways</b>, neither visible in the output unless you go looking. A third departure existed
         until this version: the second term was computed as
@@ -465,9 +469,9 @@
       </table></div>
       <p>The CIE skies use the standard gradation and indicatrix functions, with all fifteen
         coefficient sets present in the code:</p>
-      <div class="dl-formula">φ(Z) = 1 + a · exp(b / cos Z)                       <em>gradation</em>
+      <pre class="dl-formula">φ(Z) = 1 + a · exp(b / cos Z)                       <em>gradation</em>
 f(χ) = 1 + c(exp(dχ) − exp(dπ/2)) + e · cos²χ     <em>indicatrix</em>
-L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</div>
+L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</pre>
       <p>The Perez implementation carries the full eight-bin, twenty-coefficient table and includes
         the alternative expressions for the coefficients c and d that apply to the
         <b>lowest</b>-clearness bin — ε ≤ 1.065, overcast — exactly as Radiance's
