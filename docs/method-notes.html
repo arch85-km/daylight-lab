@@ -274,6 +274,15 @@
 .dl-doc .dl-secnum:empty{display:none;}
 /* long addresses in the references break rather than push the page sideways on a phone */
 .dl-doc a{overflow-wrap:anywhere;}
+/* a column of figures has its heading over the figures, not at the far edge */
+.dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(1), tbody td.dl-d:nth-child(1)) thead th:nth-child(1),
+.dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(2), tbody td.dl-d:nth-child(2)) thead th:nth-child(2),
+.dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(3), tbody td.dl-d:nth-child(3)) thead th:nth-child(3),
+.dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(4), tbody td.dl-d:nth-child(4)) thead th:nth-child(4),
+.dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(5), tbody td.dl-d:nth-child(5)) thead th:nth-child(5),
+.dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(6), tbody td.dl-d:nth-child(6)) thead th:nth-child(6),
+.dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(7), tbody td.dl-d:nth-child(7)) thead th:nth-child(7),
+.dl-doc .dl-tbl table:has(tbody td.dl-n:nth-child(8), tbody td.dl-d:nth-child(8)) thead th:nth-child(8){text-align:right;}
 /* no side padding of its own: the Elementor section sets the margins, so the notes line up with the blocks above them on every screen */
 .dl-doc{padding-left:0;padding-right:0;}
 /* and no width cap of its own: on a wide screen a capped, centred block starts further in than the blocks above it */
@@ -364,17 +373,17 @@
       <p>Under the split-flux engine, DF is instead the classic BRE hand method — three components
         added, the first two varying point by point and the third a single room-wide number:</p>
       <div class="dl-formula">DF = SC + ERC + IRC
-
+&nbsp;
 <em>SC </em> numerical integration over each aperture, 8×8 samples
      (16×16 when any shading device is present), CIE overcast
      relative luminance from CIE Standard General Sky type 1,
      (1 + 4·exp(−0.7/sin α)) / (1 + 4·exp(−0.7)), normalised by
      that sky's own hemisphere integral, 2.44954
-
+&nbsp;
 <em>ERC</em> directions below the obstruction angle credited at the
      ground reflectance; directions blocked by the building's
      own shading devices credited at half the device reflectance
-
+&nbsp;
 <em>IRC</em> = (T·W / (A(1−ρ))) · (C·ρ_fw + 5·ρ_cw)
      C weights sky light reaching the floor and lower walls and
      falls off with the <em>obstruction</em> angle — not the visible-sky
