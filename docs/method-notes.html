@@ -312,25 +312,27 @@
 .dl-doc .dl-traps h2,.dl-doc .dl-footer h3{border-bottom:1px solid var(--dl-rule);padding-bottom:7px;}
 .dl-doc .dl-secnum{font-family:var(--dl-fd);font-size:1.32rem;font-weight:500;letter-spacing:0;color:var(--dl-ink3);line-height:1.3;}
 @media (min-width:1280px){.dl-doc .dl-secnum{font-size:1.42rem;}}
-/* light grey panels: the three warnings, then every other section. The exercises always stay
-   white, so their figures keep their own grey and are not a box inside a box. The panels are
+/* light grey panels: the warnings, then every other section. The exercises always stay
+   white (marked dl-sec-ex in the markup), so their figures keep their own grey and are not a
+   box inside a box. The section part is wrapped in :is(), so a browser that cannot read it
+   drops only that part and still draws the warnings panel. The panels are
    there so a long page reads in steps. Each panel reaches a little into the margin, so its
    text stays in line with the rest; on a phone, where there is no margin to spare, it stays
    inside the column. */
-.dl-doc .dl-traps,.dl-doc .dl-sec:not(:has(.dl-ex)):nth-child(even of .dl-sec){background:var(--dl-surface);border:0;border-radius:4px;
+.dl-doc .dl-traps,.dl-doc :is(.dl-sec:not(.dl-sec-ex):nth-child(even of .dl-sec)){background:var(--dl-surface);border:0;border-radius:4px;
   margin-left:-1.25rem;margin-right:-1.25rem;padding:1.4rem 1.25rem 1.1rem;}
 /* the same space before every section heading, white or grey: 2rem between sections and
    1.4rem above the heading inside each */
-.dl-doc .dl-traps,.dl-doc .dl-sec:not(:has(.dl-ex)):nth-child(even of .dl-sec){margin-top:2rem;margin-bottom:2rem;}
+.dl-doc .dl-traps,.dl-doc .dl-sec{margin-top:2rem;margin-bottom:2rem;}
 .dl-doc .dl-traps,.dl-doc .dl-sec{padding-top:1.4rem;}
 /* and no extra space at the foot of a panel */
-.dl-doc .dl-traps > :last-child,.dl-doc .dl-sec:not(:has(.dl-ex)):nth-child(even of .dl-sec) .dl-secbody > :last-child{margin-bottom:0;}
-.dl-doc .dl-traps h2,.dl-doc .dl-sec:not(:has(.dl-ex)):nth-child(even of .dl-sec) .dl-sechead{border-bottom-color:rgba(10,12,16,.12);}
+.dl-doc .dl-traps > :last-child,.dl-doc :is(.dl-sec:not(.dl-sec-ex):nth-child(even of .dl-sec)) .dl-secbody > :last-child{margin-bottom:0;}
+.dl-doc .dl-traps h2,.dl-doc :is(.dl-sec:not(.dl-sec-ex):nth-child(even of .dl-sec)) .dl-sechead{border-bottom-color:rgba(10,12,16,.12);}
 /* what already sits on grey turns white inside a grey panel, so it still stands out */
-.dl-doc .dl-sec:not(:has(.dl-ex)):nth-child(even of .dl-sec) .dl-tbl,.dl-doc .dl-sec:not(:has(.dl-ex)):nth-child(even of .dl-sec) .dl-formula,
-.dl-doc .dl-sec:not(:has(.dl-ex)):nth-child(even of .dl-sec) .dl-fig svg,.dl-doc .dl-sec:not(:has(.dl-ex)):nth-child(even of .dl-sec) code{background:#fff;}
+.dl-doc .dl-sec:not(.dl-sec-ex):nth-child(even of .dl-sec) .dl-tbl,.dl-doc .dl-sec:not(.dl-sec-ex):nth-child(even of .dl-sec) .dl-formula,
+.dl-doc .dl-sec:not(.dl-sec-ex):nth-child(even of .dl-sec) .dl-fig svg,.dl-doc .dl-sec:not(.dl-sec-ex):nth-child(even of .dl-sec) code{background:#fff;}
 @media (max-width:700px){
-  .dl-doc .dl-traps,.dl-doc .dl-sec:not(:has(.dl-ex)):nth-child(even of .dl-sec){margin-left:0;margin-right:0;padding-left:.9rem;padding-right:.9rem;}
+  .dl-doc .dl-traps,.dl-doc :is(.dl-sec:not(.dl-sec-ex):nth-child(even of .dl-sec)){margin-left:0;margin-right:0;padding-left:.9rem;padding-right:.9rem;}
 }
 </style>
 
@@ -789,7 +791,7 @@ L(patch) = f(χ) · φ(Z) / (f(Zs) · φ(0))</pre>
   </div>
 
   <!-- 07 -->
-  <div class="dl-sec">
+  <div class="dl-sec dl-sec-ex">
     <div class="dl-sechead"><span class="dl-secnum">07</span><h2>Three exercises</h2></div>
     <div class="dl-secbody">
       <p>Each isolates one variable and holds everything else fixed. Run all three on the
