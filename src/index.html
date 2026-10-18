@@ -115,6 +115,23 @@ __NOTICE__
     </div>
 
     <div id="dragchip"></div>
+    <div class="slowbar" id="slowbar" role="status" hidden>
+      <div id="slowbar-edge">
+        <b>Calculations are running about 10 times slower than they should.</b>
+        Microsoft Edge is running this site in its enhanced security mode. To fix it:
+        <ol>
+          <li>click the padlock to the left of the address bar;</li>
+          <li>choose <b>Enhanced security is active for this site</b> and turn it off for this site;</li>
+          <li>press <b>Refresh</b>.</li>
+        </ol>
+        Or open the app in Chrome or Firefox instead.
+      </div>
+      <div id="slowbar-other" hidden>
+        <b>Calculations are running about 10 times slower than they should.</b>
+        This browser is running the site in a restricted mode. Open the app in Chrome or Firefox.
+      </div>
+      <button type="button" id="slowbar-close" aria-label="Hide this message">&times;</button>
+    </div>
     <div id="toast"></div>
     <div id="progress"><i></i></div>
   </div>

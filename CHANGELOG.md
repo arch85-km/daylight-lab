@@ -10,6 +10,14 @@ general rather than one build, use the concept DOI
 
 On `main` since 1.0.1, not yet in a release:
 
+- **Added** a message over the model when the browser runs scripts without
+  its compiler, as Microsoft Edge's "Enhance your security on the web" does
+  for sites it does not know. Every calculation then takes about ten times as
+  long (Calculate 1.0 s against 11.6 s), and the app seems to hang. In Edge
+  the message gives the steps (the padlock, "Enhanced security is active for
+  this site", turn it off, Refresh); in any other browser in that mode, to use
+  Chrome or Firefox. It stays until hidden. Recognised by timing, the same
+  check as Urban Wind Lab's.
 - **Added** the release (version and date) shown in the app, beside the build
   hash, read from `CITATION.cff`.
 - **Changed** the tab icon travels inside the file, so a copy opened from

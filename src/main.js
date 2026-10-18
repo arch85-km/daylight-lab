@@ -86,7 +86,47 @@ App.init = function () {
   // the tour opens on every launch until the student ticks it away
   initTour();
   if (!tourHidden()) setTimeout(function () { Tour.start(false); }, 900);
+
+  // Checked once the first frames are drawn, so the timing is not disturbed by
+  // start-up work, and before a student has pressed Calculate.
+  setTimeout(function () {
+    if (!scriptsWithoutCompiler()) return;
+    $('#slowbar-edge').hidden = !IS_EDGE;
+    $('#slowbar-other').hidden = IS_EDGE;
+    $('#slowbar').hidden = false;
+  }, 1500);
 };
+
+/* Microsoft Edge's "Enhance your security on the web" runs sites it does not
+   know without the script compiler. Every calculation then takes about ten
+   times as long (Calculate 1.0 s against 11.6 s, measured with the compiler
+   switched off), and a student sees an app that seems to hang.
+
+   Recognised by timing, not by a feature: Edge in that mode still provides
+   WebAssembly. Plain script work is timed against built-in work, which runs as
+   native code either way, so the computer's own speed cancels: the ratio is
+   about 0.1-0.4 in a normal browser and about 2 without the compiler. Takes
+   about 60 ms, up to half a second without the compiler. The same check as
+   Urban Wind Lab's. */
+function scriptsWithoutCompiler() {
+  if (typeof WebAssembly === 'undefined') return true;
+  var best = Infinity;
+  for (var k = 0; k < 2; k++) {
+    var t0 = performance.now(), x = 0;
+    for (var i = 0; i < 2e6; i++) x = (x + i * 3) | 0;
+    var js = performance.now() - t0;
+    var a = new Float64Array(200000);
+    for (var j = 0; j < a.length; j++) a[j] = (j * 7919) % 200003;
+    t0 = performance.now();
+    a.sort();
+    var nat = performance.now() - t0;
+    if (nat > 0) best = Math.min(best, (js + (x & 0)) / nat);
+  }
+  return best > 1;
+}
+/* The padlock steps are Edge's own; any other browser in this mode (Safari's
+   Lockdown Mode, a locked-down managed Chrome) gets the short version. */
+var IS_EDGE = /\bEdg(A|iOS)?\//.test(navigator.userAgent || '');
 
 /* --- status, toasts, progress -------------------------------------------- */
 
@@ -1490,6 +1530,7 @@ function wireGlobalEvents() {
     App.exportImage();
   });
   $('#btn-help').addEventListener('click', function () { App.openInfo('help'); });
+  $('#slowbar-close').addEventListener('click', function () { $('#slowbar').hidden = true; });
   $('#modal-close').addEventListener('click', closeModal);
   $('#modal-body').addEventListener('click', function (e) {
     if (e.target && e.target.id === 'start-tour') { closeModal(); Tour.start(true); }
