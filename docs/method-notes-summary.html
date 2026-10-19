@@ -62,7 +62,7 @@
 .dl-doc .dl-masthead{padding:2.75rem 0 1.9rem;border-bottom:2px solid var(--dl-ink);}
 .dl-doc .dl-eyebrow{font-family:var(--dl-fm);font-size:.70rem;font-weight:500;
   letter-spacing:.16em;text-transform:uppercase;color:var(--dl-accent);margin:0 0 1.1rem;}
-.dl-doc h1{font-family:var(--dl-fd);font-weight:600;
+.dl-doc h1,.dl-doc .dl-title{font-family:var(--dl-fd);font-weight:600;
   font-size:clamp(1.9rem,5.2vw,2.75rem);line-height:1.04;letter-spacing:-.028em;
   text-wrap:balance;margin:0 0 1.1rem;color:var(--dl-ink);}
 .dl-doc .dl-standfirst{max-width:var(--dl-measure);font-size:1.14rem;line-height:1.6;
@@ -327,7 +327,7 @@
 <div class="dl-doc dl-auto-dark">
 
   <div class="dl-masthead">
-    <h1>Method Notes in Brief</h1>
+    <h2 class="dl-title">Method Notes in Brief</h2>
     <p class="dl-standfirst">The short version: what the tool computes, and &mdash; the part that
       matters most when you cite it &mdash; <strong>what it does not model at all</strong>. Two
       independent engines are provided, and the disagreement between them is itself a teaching
